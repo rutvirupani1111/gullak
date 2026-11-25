@@ -1,6 +1,6 @@
 import { route, ok, fail } from "@/lib/http";
-import { admin, withShop } from "@/lib/db";
-import { staff, owner } from "@/lib/session";
+import { withShop } from "@/lib/db";
+import { staff, ownerShop } from "@/lib/session";
 import { liveToken } from "@/lib/server/game";
 
 export const GET = route(async (req) => {
@@ -8,11 +8,11 @@ export const GET = route(async (req) => {
   let shopId = st?.shop_id;
   let slug = st?.slug;
   if (!shopId) {
-    const o = await owner();
+    // the owner, or this browser's own demo sandbox, can open the Live QR without a staff PIN
     const want = new URL(req.url).searchParams.get("shop");
-    if (o && want) {
-      const s = await admin((q) => q.one("select id, slug from shops where slug = $1 and owner_id = $2", [want, o.id]));
-      shopId = s?.id; slug = s?.slug;
+    if (want) {
+      const s = await ownerShop(want).catch(() => null);
+      if (s) { shopId = s.id; slug = s.slug; }
     }
   }
   if (!shopId) return fail(401, "signin", "Counter par PIN se login karo.", "Sign in at the counter with a PIN.");

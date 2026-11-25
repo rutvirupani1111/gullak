@@ -71,10 +71,11 @@ function Thappa({ me, setCount, logout }: { me: { name: string; shop: { slug: st
   const [msg, setMsg] = useState<string | null>(null);
   const [look, setLook] = useState<Look | null>(null);
   const [hold, setHold] = useState(0);
-  const [stamped, setStamped] = useState<{ id: string; at: number } | null>(null);
+  const [stamped, setStamped] = useState<{ id: string | null; at: number; open: boolean } | null>(null);
   const [offline, setOffline] = useState(false);
   const [scan, setScan] = useState(false);
   const refs = useRef<(HTMLInputElement | null)[]>([]);
+  const undoWanted = useRef(false);
   const holdT = useRef<number | null>(null);
   const video = useRef<HTMLVideoElement>(null);
   const code = boxes.join("");
@@ -123,37 +124,53 @@ function Thappa({ me, setCount, logout }: { me: { name: string; shop: { slug: st
   function endHold() {
     if (holdT.current) { cancelAnimationFrame(holdT.current); holdT.current = null; setHold(0); }
   }
+  /** Optimistic: the blot lands and the undo bar appears at once; the server confirms behind it.
+   *  An undo pressed before the server answers is held and sent the moment the stamp's id arrives. */
   async function commit() {
     const id = look!.coupon!.id;
-    setStamped({ id: "", at: Date.now() });
+    const before = me.count;
+    undoWanted.current = false;
+    setStamped({ id: null, at: Date.now(), open: true });
+    setCount(before + 1);
     try { navigator.vibrate?.([30, 40, 30]); } catch {}
     try {
       const r = await fetch("/api/v1/counter/redeem", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ couponId: id, idempotencyKey: crypto.randomUUID() }) });
       const d = await r.json();
-      if (!r.ok) { setStamped(null); setHold(0); setMsg(d.message_hi); return; }
-      setStamped({ id: d.redemptionId, at: Date.now() });
-      setCount(me.count + 1);
+      if (!r.ok) { setStamped(null); setHold(0); setCount(before); setMsg(d.message_hi); return; }
+      setStamped((s) => (s ? { ...s, id: d.redemptionId } : s));
+      if (undoWanted.current) undo(d.redemptionId, before + 1);
     } catch {
-      setStamped(null); setHold(0); setOffline(true);
+      setStamped(null); setHold(0); setCount(before); setOffline(true);
     }
   }
-  async function undo() {
-    if (!stamped?.id) return;
-    const r = await fetch("/api/v1/counter/undo", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ redemptionId: stamped.id }) });
-    const d = await r.json();
-    if (!r.ok) return setMsg(d.message_hi);
-    setStamped(null); setHold(0); setCount(Math.max(0, me.count - 1));
-    setMsg("Thappa wapas le liya. Coupon phir se chalu hai.");
+  async function undo(idArg?: string, countNow = me.count) {
+    const id = idArg ?? stamped?.id;
+    if (!id) {
+      undoWanted.current = true;
+      setMsg("Wapas le rahe hain...");
+      return;
+    }
+    undoWanted.current = false;
+    try {
+      const r = await fetch("/api/v1/counter/undo", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ redemptionId: id }) });
+      const d = await r.json();
+      if (!r.ok) return setMsg(d.message_hi);
+      setStamped(null); setHold(0); setCount(Math.max(0, countNow - 1));
+      setMsg("Thappa wapas le liya. Coupon phir se chalu hai.");
+    } catch {
+      setMsg("Network nahi mila. Thappa abhi laga hua hai. Dobara Wapas lo dabao.");
+    }
   }
   function reset() {
     setBoxes(Array(7).fill("")); setLook(null); setStamped(null); setHold(0); setMsg(null); setBad(-1);
     setTimeout(() => refs.current[0]?.focus(), 0);
   }
+  // the undo bar closes 10 seconds after the stamp, a little before the server's own 10 second window
   useEffect(() => {
-    if (!stamped?.id) return;
-    const t = setTimeout(() => setStamped((s) => (s ? { ...s, id: "" } : s)), 10000);
+    if (!stamped?.at) return;
+    const t = setTimeout(() => setStamped((s) => (s ? { ...s, open: false } : s)), 9500);
     return () => clearTimeout(t);
-  }, [stamped?.id]);
+  }, [stamped?.at]);
   useEffect(() => {
     if (!scan) return;
     let stream: MediaStream | null = null, stop = false;
@@ -193,7 +210,7 @@ function Thappa({ me, setCount, logout }: { me: { name: string; shop: { slug: st
               {boxes.map((b, i) => (
                 <input key={i} ref={(el) => { refs.current[i] = el; }} value={b} aria-label={`Code akshar ${i + 1}`} maxLength={2} autoCapitalize="characters" autoComplete="off" autoFocus={i === 0}
                   onChange={(e) => setChar(i, e.target.value)} onKeyDown={(e) => { if (e.key === "Backspace" && !b && i) refs.current[i - 1]?.focus(); }}
-                  className="f-mono" style={{ width: "min(12vw, 52px)", height: 60, textAlign: "center", fontSize: 26, fontWeight: 700, border: `3px solid ${bad === i ? "var(--press-red)" : "var(--ink)"}`, background: bad === i ? "#FCD9D6" : "#F5E9CF", marginRight: i === 3 ? 10 : 0 }} />
+                  className="f-mono" style={{ width: "min(10.6vw, 52px)", height: 58, textAlign: "center", fontSize: 26, fontWeight: 700, border: `3px solid ${bad === i ? "var(--press-red)" : "var(--ink)"}`, background: bad === i ? "#FCD9D6" : "#F5E9CF", marginRight: i === 3 ? 10 : 0 }} />
               ))}
             </div>
             <div style={{ display: "flex", justifyContent: "center", gap: 10, marginTop: 16 }}>
@@ -250,7 +267,7 @@ function Thappa({ me, setCount, logout }: { me: { name: string; shop: { slug: st
           </div>
         )}
         {/* outside the rising slip: a transformed parent would pin this bar to the slip instead of the screen */}
-        {stamped?.id && <UndoBar key={stamped.id} onUndo={undo} />}
+        {stamped?.open && <UndoBar key={stamped.at} onUndo={() => undo()} />}
       </div>
     </main>
   );
@@ -261,7 +278,7 @@ function UndoBar({ onUndo }: { onUndo: () => void }) {
     <div className="tin" role="status" style={{ position: "fixed", left: 16, right: 16, bottom: 16, zIndex: 40, padding: "12px 12px 16px", display: "flex", gap: 10, alignItems: "center", justifyContent: "space-between", maxWidth: 520, margin: "0 auto", animation: "rise .3s var(--spring-soft)", overflow: "hidden" }}>
       <span style={{ fontWeight: 700 }}>Galti se lagaya? <small style={{ fontWeight: 500 }}>Stamped by mistake?</small></span>
       <button className="plate red small" onClick={onUndo}>Wapas lo</button>
-      <span aria-hidden="true" style={{ position: "absolute", left: 0, bottom: 0, height: 5, width: "100%", background: "var(--press-red)", transformOrigin: "0 50%", animation: "drain 10s linear forwards" }} />
+      <span aria-hidden="true" style={{ position: "absolute", left: 0, bottom: 0, height: 5, width: "100%", background: "var(--press-red)", transformOrigin: "0 50%", animation: "drain 9.5s linear forwards" }} />
     </div>
   );
 }

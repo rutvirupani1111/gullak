@@ -120,7 +120,7 @@ export function SetupForm() {
         <label className="field">Hindi mein naam (zaroori nahi)<input value={s.name_local} onChange={(e) => setS({ ...s, name_local: e.target.value })} /></label>
         <label className="field">Pata<input required value={s.address} onChange={(e) => setS({ ...s, address: e.target.value })} /></label>
         <label className="field">Shehar<input required value={s.city} onChange={(e) => setS({ ...s, city: e.target.value })} /></label>
-        <label className="field">Web naam: gullak.vercel.app/s/<input required value={s.slug} pattern="[a-z0-9-]{3,40}" onChange={(e) => { setS({ ...s, slug: e.target.value }); checkSlug(e.target.value); }} />
+        <label className="field">Web naam: {(process.env.NEXT_PUBLIC_SITE_URL || "https://gullak-dukaan.vercel.app").replace(/^https?:\/\//, "")}/s/<input required value={s.slug} pattern="[a-z0-9-]{3,40}" onChange={(e) => { setS({ ...s, slug: e.target.value }); checkSlug(e.target.value); }} />
           {avail !== null && <small style={{ color: avail ? "var(--paan)" : "var(--press-red)", fontWeight: 700 }}>{avail ? "Khaali hai" : "Pehle se liya hua"}</small>}</label>
         <fieldset style={{ border: 0, padding: 0 }}><legend style={{ fontWeight: 600 }}>Rang</legend>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8 }}>
