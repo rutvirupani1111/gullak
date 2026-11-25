@@ -84,6 +84,12 @@ export default function CustomerApp({ shop, query }: { shop: Shop; query: { lqt?
   const [result, setResult] = useState<PlayResult | null>(null);
   const [phase, setPhase] = useState<"counter" | "game" | "done">("counter");
   const [count, setCount] = useState(0);
+  const [pinned, setPinned] = useState<{ id: string; expiresAt: string } | null>(null);
+  const pinFrom = useCallback((list: { id: string; status: string; expiresAt: string; shop: { slug: string } }[]) => {
+    const live = list.filter((x) => x.shop?.slug === shop.slug && x.status === "issued" && new Date(x.expiresAt).getTime() > Date.now());
+    live.sort((a, b) => new Date(a.expiresAt).getTime() - new Date(b.expiresAt).getTime());
+    setPinned(live[0] ? { id: live[0].id, expiresAt: String(live[0].expiresAt) } : null);
+  }, [shop.slug]);
   const [verified, setVerified] = useState<boolean | null>(true);
   const [err, setErr] = useState<string | null>(null);
   const [calm, setCalm] = useState(false);
@@ -111,7 +117,9 @@ export default function CustomerApp({ shop, query }: { shop: Shop; query: { lqt?
       if (l === "en" || l === "hi" || l === "hinglish") setLang(l);
       setRepeat(!!localStorage.getItem("gk.seen." + shop.slug));
       if (localStorage.getItem("gk.lite") === "1") setLite(true);
-      setCount(JSON.parse(localStorage.getItem("gk.coupons") || "[]").filter((c: { status: string }) => c.status === "issued").length);
+      const mirror = JSON.parse(localStorage.getItem("gk.coupons") || "[]");
+      setCount(mirror.filter((c: { status: string }) => c.status === "issued").length);
+      pinFrom(mirror);
     } catch {}
     setCalm(matchMedia("(prefers-reduced-motion: reduce)").matches);
     const h = new Date(Date.now() + 330 * 60000).getUTCHours();
@@ -121,6 +129,7 @@ export default function CustomerApp({ shop, query }: { shop: Shop; query: { lqt?
     } catch {}
     fetch("/api/v1/wallet").then((r) => r.json()).then((w) => {
       setCount(w.coupons.filter((c: { status: string }) => c.status === "issued").length);
+      pinFrom(w.coupons);
       idbReplace(w.coupons);
     }).catch(() => {});
   }, [shop.slug, query.lqt, query.cb, query.src]);
@@ -314,7 +323,7 @@ export default function CustomerApp({ shop, query }: { shop: Shop; query: { lqt?
     (res: PlayResult, fromEl: HTMLElement | null) => {
       setPhase("done");
       if (!res.couponId) return;
-      fetch("/api/v1/wallet").then((r) => r.json()).then((w) => idbReplace(w.coupons)).catch(() => {});
+      fetch("/api/v1/wallet").then((r) => r.json()).then((w) => { pinFrom(w.coupons); return idbReplace(w.coupons); }).catch(() => {});
       const target = gullakRef.current;
       if (!fromEl || !target || calm) {
         setCount((c) => c + 1);
@@ -372,6 +381,7 @@ export default function CustomerApp({ shop, query }: { shop: Shop; query: { lqt?
       {shop.is_demo && (
         <div className="demo-ribbon"><div>Demo dukaan: yeh asli dukaan nahi hai</div></div>
       )}
+      {pinned && phase !== "done" && <PinnedRibbon id={pinned.id} expiresAt={pinned.expiresAt} label={t("show")} />}
       <header className="wrap" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", paddingTop: 10, paddingBottom: 6 }}>
         <button className="plate small ghost" aria-label="Matchbox dobara kholo" onClick={() => dispatchEvent(new Event("gk-replay-box"))} style={{ "--pb": p.a } as React.CSSProperties}>
           <span className="f-display" style={{ fontSize: 20, color: textOn(p.a) }}>{shop.initial}</span>
@@ -456,6 +466,12 @@ export default function CustomerApp({ shop, query }: { shop: Shop; query: { lqt?
               <div className="paper rise" style={{ padding: 16, marginTop: 16, textAlign: "center" }}>
                 {result.outcome === "win" ? (
                   <>
+                    {result.sig && (
+                      <div aria-hidden="true" style={{ position: "relative", width: 96, height: 96, margin: "0 auto 8px" }}>
+                        <span className="mohar-ink" />
+                        <div className="mohar-press" dangerouslySetInnerHTML={{ __html: moharSvg(result.sig, shop.palette, shop.initial) }} />
+                      </div>
+                    )}
                     <p className="f-display" style={{ fontSize: 28, margin: 0, color: "var(--press-red)" }}>{prizeName(result.prize!)}</p>
                     <p style={{ margin: "6px 0 12px" }}>{t("won")}</p>
                   </>
@@ -548,6 +564,11 @@ export default function CustomerApp({ shop, query }: { shop: Shop; query: { lqt?
         .keeper-in .kp-head { animation: ${box === "open" ? "kpLook .8s var(--spring-soft) both" : "none"}; }
         .kp-wave { animation: kpWave 1.1s ease-in-out .2s both; }
         .tag-tie { animation: tagSwing 1.6s var(--spring-soft) both; }
+        .mohar-press { position: relative; animation: moharPress .62s cubic-bezier(.3,.1,.3,1) .15s both; }
+        .mohar-ink { position: absolute; inset: 6px; border-radius: 50%; background: var(--press-red); opacity: 0; animation: inkSpread .5s ease-out .37s both; }
+        @keyframes moharPress { 0% { transform: translateY(-46px) scale(1.5) rotate(-18deg); opacity: 0 } 35% { transform: translateY(0) scale(1.08, .86) rotate(-4deg); opacity: 1 } 55% { transform: scale(.96, 1.04) rotate(-2deg) } 100% { transform: none; opacity: 1 } }
+        @keyframes inkSpread { 0% { transform: scale(.6); opacity: .35 } 100% { transform: scale(1.3); opacity: 0 } }
+        @media (prefers-reduced-motion: reduce) { .mohar-press { animation: fadein .25s both } .mohar-ink { display: none } }
         @keyframes tagSwing { 0% { transform: rotate(-14deg) translateY(-30px); opacity: 0 } 30% { opacity: 1 } 55% { transform: rotate(7deg) } 80% { transform: rotate(-3deg) } 100% { transform: rotate(0) } }
         @media (prefers-reduced-motion: reduce) { .tag-tie { animation: fadein .25s both } }
         @keyframes kpLook { from { transform: rotate(-8deg) } to { transform: rotate(0) } }
@@ -575,6 +596,26 @@ function AlreadyPlayed({ at, t, onGift, giftMsg }: { at: string; t: (k: keyof ty
       </div>
       {giftMsg && <p role="status" style={{ fontSize: 14, margin: "10px 0 0" }}>{giftMsg}</p>}
     </div>
+  );
+}
+
+/** Pinned on every page of this shop while one of its coupons is live: one tap to the paper-white counter screen. */
+function PinnedRibbon({ id, expiresAt, label }: { id: string; expiresAt: string; label: string }) {
+  const [now, setNow] = useState<number | null>(null);
+  useEffect(() => {
+    setNow(Date.now());
+    const i = setInterval(() => setNow(Date.now()), 30000);
+    return () => clearInterval(i);
+  }, []);
+  const ms = now === null ? 0 : Math.max(0, new Date(expiresAt).getTime() - now);
+  const d = Math.floor(ms / 86400000), h = Math.floor((ms % 86400000) / 3600000), m = Math.floor((ms % 3600000) / 60000);
+  const left = now === null ? "" : d ? `${d} din ${h} ghante` : `${h}h ${m}m`;
+  return (
+    <a href={`/w/${id}`} className="pin-ribbon" style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 10, minHeight: 44, background: "var(--press-red)", color: "#FFF6E0", fontWeight: 800, textDecoration: "none", borderBottom: "3px solid var(--ink)", position: "sticky", top: 0, zIndex: 40, padding: "0 12px" }}>
+      <svg width="26" height="26" viewBox="0 0 26 26" aria-hidden="true"><circle cx="13" cy="13" r="11" fill="#F4B400" stroke="#1C1210" strokeWidth="2" strokeDasharray="3 2" /><circle cx="13" cy="13" r="6" fill="none" stroke="#1C1210" strokeWidth="1.5" /></svg>
+      <span>{label}</span>
+      {left && <span className="f-mono" style={{ fontWeight: 400, fontSize: 13, opacity: 0.9 }}>{left} bache</span>}
+    </a>
   );
 }
 

@@ -173,11 +173,13 @@ export default function PosterBench({ shop, qr, qrText, url }: { shop: Shop; qr:
       g.fillStyle = "#FFFFFF"; g.fillRect(qx - u * 2, qy - u * 2, qs + u * 4, qs + u * 4);
       g.strokeRect(qx - u * 2, qy - u * 2, qs + u * 4, qs + u * 4);
       g.imageSmoothingEnabled = false;
-      g.drawImage(qrImg, qx, qy, qs, qs);
+      // a quiet zone of about three modules inside the plate keeps the marigolds and the border off the finder squares
+      const qz = qs * 0.09;
+      g.drawImage(qrImg, qx + qz, qy + qz, qs - 2 * qz, qs - 2 * qz);
       g.imageSmoothingEnabled = true;
       {
         const m = g.getTransform();
-        const a = m.transformPoint(new DOMPoint(qx, qy)), b = m.transformPoint(new DOMPoint(qx + qs, qy + qs));
+        const a = m.transformPoint(new DOMPoint(qx + qz, qy + qz)), b = m.transformPoint(new DOMPoint(qx + qs - qz, qy + qs - qz));
         boxes.push({ x: Math.min(a.x, b.x), y: Math.min(a.y, b.y), s: Math.abs(b.x - a.x), rot: a.x > b.x });
       }
       // marigold corners
@@ -235,9 +237,24 @@ export default function PosterBench({ shop, qr, qrText, url }: { shop: Shop; qr:
     return c;
   }
   async function selfTest(c: HTMLCanvasElement): Promise<boolean | null> {
-    // decode the rendered poster exactly as a customer's camera would; a poster whose QR does not read is never handed out
-    const raw = await qrReader(1400).read(c);
-    return raw ? raw.includes(`/s/${shop.slug}`) : false;
+    // decode the rendered poster the way a customer's camera frames it: the QR and its quiet zone, cut from the real print canvas.
+    // A poster whose QR does not read, in every copy on the sheet, is never handed out.
+    const boxes = qrBoxes.current.boxes;
+    if (!boxes.length) return false;
+    const reader = qrReader(900);
+    for (const b of boxes) {
+      const m = b.s * 0.08, x = Math.max(0, b.x - m), y = Math.max(0, b.y - m), s = Math.min(c.width - x, c.height - y, b.s + 2 * m);
+      const crop = document.createElement("canvas");
+      crop.width = Math.round(s); crop.height = Math.round(s);
+      const g = crop.getContext("2d");
+      if (!g) return null;
+      g.translate(b.rot ? crop.width : 0, b.rot ? crop.height : 0);
+      if (b.rot) g.rotate(Math.PI);
+      g.drawImage(c, x, y, s, s, 0, 0, crop.width, crop.height);
+      const raw = await reader.read(crop);
+      if (!raw || !raw.includes(`/s/${shop.slug}`)) return false;
+    }
+    return true;
   }
   async function png(share = false) {
     setBusy("png");

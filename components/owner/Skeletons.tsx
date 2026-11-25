@@ -68,3 +68,41 @@ export function BagSkeleton() {
     </main>
   );
 }
+
+/** The painter's bench before the paper is laid: the template tins and a blank creased sheet. */
+export function BenchSkeleton() {
+  return (
+    <main aria-busy="true" aria-label="Painter ka bench lag raha hai" style={{ background: "#5A3A1E", minHeight: "100dvh" }}>
+      <div className="wrap" style={{ padding: "18px 16px 80px", display: "grid", gap: 12 }}>
+        {bar("38%", 40, { background: "rgba(245,233,207,.18)" })}
+        {bar("72%", 16, { background: "rgba(245,233,207,.12)" })}
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>{[90, 120, 100, 80, 110].map((w, i) => <div key={i} style={{ width: w, height: 44, border: "2.5px solid rgba(28,18,16,.6)", background: "rgba(226,205,162,.35)" }} />)}</div>
+        <div style={{ width: "min(100%, 420px)", aspectRatio: "1240 / 1754", margin: "18px auto 0", background: "#F3E7CC", border: "3px solid var(--ink)", boxShadow: "6px 8px 0 rgba(0,0,0,.45)", opacity: 0.85 }} />
+      </div>
+    </main>
+  );
+}
+
+/** Wooden key hooks with no tags hung yet. */
+export function HooksSkeleton() {
+  return (
+    <main className="wrap" aria-busy="true" aria-label="Chaabiyaan aa rahi hain" style={{ padding: "18px 16px 80px" }}>
+      {bar("34%", 40)}
+      {bar("80%", 16, { marginTop: 12 })}
+      <div style={{ marginTop: 24, background: "#8B5E34", border: "3px solid var(--ink)", minHeight: 260, display: "flex", gap: 34, justifyContent: "center", alignItems: "start", paddingTop: 28 }}>
+        {[0, 1, 2].map((i) => <div key={i} style={{ display: "grid", justifyItems: "center", gap: 6 }}><div style={{ width: 14, height: 14, borderRadius: 7, background: "#C9A227", border: "2px solid var(--ink)" }} /><div className="skel" style={{ width: 96, height: 70, background: "rgba(232,190,90,.4)", border: "2px solid rgba(28,18,16,.5)" }} /></div>)}
+      </div>
+    </main>
+  );
+}
+
+/** A watchman's ruled register, still blank. Also used for settings, which is a ledger of the shop's own details. */
+export function RegisterSkeleton({ label = "Register khul raha hai" }: { label?: string }) {
+  return (
+    <main className="wrap" aria-busy="true" aria-label={label} style={{ padding: "18px 16px 80px" }}>
+      {bar("44%", 40)}
+      {bar("76%", 16, { marginTop: 12 })}
+      <div style={{ marginTop: 24, background: "#FBF4E2", border: "3px solid var(--ink)", boxShadow: "6px 8px 0 var(--ink)", backgroundImage: "repeating-linear-gradient(transparent 0 33px, rgba(14,138,134,.35) 33px 34px)", minHeight: 320, borderLeft: "26px solid #E9DBB8" }} />
+    </main>
+  );
+}

@@ -20,13 +20,13 @@ export function OwnerNavInner({ slug, name }: { slug: string; name: string }) {
   return (
     <nav className="noprint" aria-label="Dukaan ka menu" style={{ background: "var(--ink)", color: "var(--newsprint)", position: "sticky", top: 0, zIndex: 20 }}>
       <div className="wrap" style={{ display: "flex", gap: 4, alignItems: "center", padding: "4px 8px 4px 16px" }}>
-        <a href={base} className="f-display" style={{ color: "var(--haldi)", fontSize: 18, textDecoration: "none", whiteSpace: "nowrap", maxWidth: "34vw", overflow: "hidden", textOverflow: "ellipsis", flex: "none", display: "inline-block", padding: "11px 0" }}>{name}</a>
+        <a href={base} className="f-display" style={{ color: "var(--haldi)", fontSize: 18, textDecoration: "none", whiteSpace: "nowrap", maxWidth: "34vw", overflow: "hidden", textOverflow: "ellipsis", flex: "none", display: "inline-block", padding: 0, lineHeight: "44px", minHeight: 44 }}>{name}</a>
         <div className="owner-nav" style={{ display: "flex", gap: 2, overflowX: "auto", flex: 1, minWidth: 0, paddingRight: 36, scrollbarWidth: "none" }}>
           {links.map(([h, l]) => (
             <a key={h} href={base + h} aria-current={isOn(h) ? "page" : undefined}
-              style={{ color: isOn(h) ? "var(--ink)" : "var(--newsprint)", background: isOn(h) ? "var(--haldi)" : "transparent", padding: "11px 9px", whiteSpace: "nowrap", fontWeight: 700, fontSize: 14, textDecoration: "none" }}>{l}</a>
+              style={{ color: isOn(h) ? "var(--ink)" : "var(--newsprint)", background: isOn(h) ? "var(--haldi)" : "transparent", padding: "0 9px", minHeight: 44, display: "flex", alignItems: "center", whiteSpace: "nowrap", fontWeight: 700, fontSize: 14, textDecoration: "none" }}>{l}</a>
           ))}
-          <a href={`/s/${slug}`} style={{ color: "var(--haldi)", padding: "11px 9px", whiteSpace: "nowrap", fontWeight: 700, fontSize: 14 }}>Grahak ki nazar se</a>
+          <a href={`/s/${slug}`} style={{ color: "var(--haldi)", padding: "0 9px", minHeight: 44, display: "flex", alignItems: "center", whiteSpace: "nowrap", fontWeight: 700, fontSize: 14 }}>Grahak ki nazar se</a>
         </div>
         <button onClick={async () => { await api("/api/v1/auth/logout", "POST", {}); location.href = "/"; }} style={{ flex: "none", background: "none", color: "var(--newsprint)", border: "1px solid", padding: "8px 10px", minHeight: 44, cursor: "pointer" }}>Bahar</button>
       </div>

@@ -198,4 +198,4 @@ body {
   body { background: #fff; }
 }
 /* inline text links that are also controls get a 44px tall hit area without changing the line */
-a.tap { display: inline-block; padding: 11px 2px; margin: -6px 0; }
+a.tap { display: inline-flex; align-items: center; min-height: 44px; padding: 0 2px; margin: -6px 0; vertical-align: middle; }
