@@ -36,6 +36,11 @@ export default function LiveQr({ shop }: { shop?: string }) {
           <div style={{ width: "min(80vw, 420px)", aspectRatio: "1", margin: "0 auto", opacity: svg ? 1 : 0.2 }} dangerouslySetInnerHTML={{ __html: svg ?? "" }} />
           <div style={{ height: 8, background: "#eee", marginTop: 12, border: "2px solid var(--ink)" }}><div style={{ height: "100%", width: `${(left / 60) * 100}%`, background: "var(--haldi)", transition: "width .5s linear" }} /></div>
           <p className="f-mono">{left}s</p>
+          <p style={{ fontSize: 14, maxWidth: 360, margin: "8px auto 0", lineHeight: 1.45 }}>
+            Yeh screen counter wale phone par khuli rakho. Grahak isi QR se khelte hain, isliye poster ki photo kahin aur se kaam nahi karti.
+            <span style={{ display: "block", opacity: 0.7 }}>Keep this open on the counter phone. Customers scan it to play, so a photo of the poster cannot be used from elsewhere.</span>
+          </p>
+          {shop && <a className="plate small ghost" href={`/dukaan/${shop}`} style={{ marginTop: 12 }}>Dukaan par wapas</a>}
         </div>
       )}
     </main>
