@@ -1,0 +1,156 @@
+"use client";
+import { useEffect, useState } from "react";
+import { GullakArt, Label } from "@/components/art";
+import type { WalletCoupon } from "@/lib/server/wallet";
+import { formatCode } from "@/lib/code";
+import { CONSENT_VERSION, consentText } from "@/lib/consent";
+
+function left(iso: string, now: number) {
+  const ms = new Date(iso).getTime() - now;
+  if (ms <= 0) return "Khatam";
+  const d = Math.floor(ms / 86400000), h = Math.floor((ms % 86400000) / 3600000), m = Math.floor((ms % 3600000) / 60000);
+  return d ? `${d} din ${h} ghante` : `${h}h ${m}m`;
+}
+
+export default function Wallet({ initial }: { initial: WalletCoupon[] }) {
+  const [coupons, setCoupons] = useState(initial);
+  const [spilled, setSpilled] = useState(false);
+  const [flip, setFlip] = useState<string | null>(null);
+  const [now, setNow] = useState(Date.now());
+  const [offline, setOffline] = useState(false);
+  const [sheet, setSheet] = useState<string | null>(null);
+  const [msg, setMsg] = useState<string | null>(null);
+  useEffect(() => {
+    const i = setInterval(() => setNow(Date.now()), 30000);
+    if (!initial.length) {
+      try {
+        const cached = JSON.parse(localStorage.getItem("gk.coupons") || "[]");
+        if (cached.length && !navigator.onLine) { setCoupons(cached); setOffline(true); }
+      } catch {}
+    } else try { localStorage.setItem("gk.coupons", JSON.stringify(initial)); } catch {}
+    // shake to spill: two jolts above 18 m/s2 within 600 ms
+    let lastJolt = 0;
+    const onMotion = (e: DeviceMotionEvent) => {
+      const a = e.accelerationIncludingGravity;
+      if (!a) return;
+      const mag = Math.hypot(a.x ?? 0, a.y ?? 0, a.z ?? 0);
+      if (mag > 18) {
+        const t = Date.now();
+        if (t - lastJolt < 600) setSpilled(true);
+        lastJolt = t;
+      }
+    };
+    addEventListener("devicemotion", onMotion);
+    return () => { clearInterval(i); removeEventListener("devicemotion", onMotion); };
+  }, [initial]);
+
+  const live = coupons.filter((c) => c.status === "issued" && new Date(c.expiresAt).getTime() > now);
+  const past = coupons.filter((c) => !live.includes(c));
+  const shops = [...new Map(coupons.map((c) => [c.shop.slug, c.shop])).values()];
+
+  return (
+    <main style={{ minHeight: "100dvh", background: "linear-gradient(#E9D9B5 0 62%, #7A4A26 62% 64%, #5b3519 64%)" }}>
+      <div className="wrap" style={{ paddingTop: 16, paddingBottom: 40 }}>
+        <a href={coupons[0] ? `/s/${coupons[0].shop.slug}` : "/"} className="plate small ghost">Wapas</a>
+        <h1 className="f-display truck" style={{ fontSize: 40, color: "var(--haldi)", margin: "14px 0 0", textAlign: "center" }}>Meri gullak</h1>
+        {offline && <p className="paper" style={{ padding: 10, textAlign: "center" }}>Offline: coupon sirf dikhane ke liye. Thappa network par hi lagega.</p>}
+        <div style={{ display: "grid", placeItems: "center", marginTop: 8 }}>
+          <button onClick={() => setSpilled(true)} aria-label="Hilao, coupon bahar nikalo" style={{ background: "none", border: 0, cursor: "pointer", viewTransitionName: "gullak", animation: spilled ? "wobble .45s var(--spring-soft)" : "wobble 2.4s ease-in-out infinite" } as React.CSSProperties}>
+            <GullakArt size={170} />
+          </button>
+          <p style={{ fontWeight: 700, margin: 0 }}>{live.length} coupon andar · <button className="plate small" onClick={() => setSpilled((s) => !s)}>{spilled ? "Wapas daalo" : "Hilao"}</button></p>
+        </div>
+        {coupons.length === 0 && (
+          <div className="paper" style={{ padding: 18, maxWidth: 420, margin: "24px auto", textAlign: "center" }}>
+            <p className="f-chalk" style={{ fontSize: 22, margin: 0 }}>Gullak khaali hai</p>
+            <p>Kisi dukaan ka QR scan karo, dibba kholo aur khelo. Jeeta hua sikka yahan girega.</p>
+            <a className="plate" href="/s/sharma-ji-ki-tapri">Demo dukaan par khelo</a>
+          </div>
+        )}
+        {spilled && (
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(100%, 260px), 1fr))", gap: 18, marginTop: 20 }}>
+            {[...live, ...past].map((c, i) => {
+              const soon = new Date(c.expiresAt).getTime() - now < 86400000 && c.status === "issued";
+              const isLive = live.includes(c);
+              return (
+                <div key={c.id} style={{ perspective: 900, aspectRatio: "260 / 300", animation: `rise .45s var(--spring-soft) ${i * 50}ms both` }}>
+                  <button onClick={() => setFlip(flip === c.id ? null : c.id)} aria-label={`${c.label_hi}, palat kar dekho`}
+                    style={{ position: "relative", width: "100%", height: "100%", border: 0, padding: 0, background: "none", transformStyle: "preserve-3d", transition: "transform 400ms var(--spring-snap)", transform: flip === c.id ? "rotateY(180deg)" : "none", opacity: isLive ? 1 : 0.6, cursor: "pointer" }}>
+                    <div className="paper" style={{ position: "absolute", inset: 0, backfaceVisibility: "hidden", padding: 8, display: "grid", gridTemplateRows: "1fr auto" }}>
+                      <Label palette={c.shop.palette} initial={c.shop.initial} seed={c.id} title={c.shop.initial} pattern={i % 8} />
+                      <div style={{ paddingTop: 8, textAlign: "left" }}>
+                        <b style={{ fontSize: 17 }}>{c.label_hi}</b>
+                        <div style={{ fontSize: 13 }}>{c.shop.name}</div>
+                        {soon && <span style={{ background: "var(--press-red)", color: "#fff", padding: "1px 6px", fontWeight: 800, fontSize: 12 }}>Kal khatam</span>}
+                        {!isLive && <span style={{ border: "2px solid var(--press-red)", color: "var(--press-red)", padding: "0 6px", fontWeight: 800, fontSize: 12, transform: "rotate(-6deg)", display: "inline-block" }}>{c.status === "redeemed" ? "DIYA" : "KHATAM"}</span>}
+                      </div>
+                    </div>
+                    <div className="paper" style={{ position: "absolute", inset: 0, backfaceVisibility: "hidden", transform: "rotateY(180deg)", padding: 12, display: "grid", justifyItems: "center", alignContent: "center", gap: 6 }}>
+                      <b>{c.label_en}</b>
+                      <span className="f-mono" style={{ fontSize: 30, fontWeight: 700, letterSpacing: 2 }}>{formatCode(c.code)}</span>
+                      <div style={{ width: 80, height: 80 }} dangerouslySetInnerHTML={{ __html: c.mohar }} />
+                      <span style={{ fontSize: 13 }}>{isLive ? `Bacha: ${left(c.expiresAt, now)}` : c.status === "redeemed" ? "Counter par diya gaya" : "Khatam"}</span>
+                      {isLive && <a className="plate red small" href={`/w/${c.id}`} onClick={(e) => e.stopPropagation()}>Counter par dikhao</a>}
+                    </div>
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        )}
+        {shops.length > 0 && (
+          <div style={{ marginTop: 34, display: "flex", flexWrap: "wrap", gap: 10, justifyContent: "center" }}>
+            {shops.map((s) => (
+              <button key={s.slug} className="plate small ghost" onClick={() => setSheet(s.slug)}>{s.name}: agli baar yaad dilaayein?</button>
+            ))}
+            <button className="plate small ghost" onClick={async () => {
+              const r = await fetch("/api/v1/wallet/forget", { method: "POST", headers: { "content-type": "application/json" }, body: "{}" });
+              const d = await r.json();
+              setMsg(d.removed ? `Hata diya. ${d.removed} dukaan se aapka number mita diya gaya.` : "Aapka koi number save nahi tha. Kuch hataane ko nahi.");
+            }}>Mera data hatao</button>
+          </div>
+        )}
+        {msg && <p className="paper" role="status" style={{ padding: 12, maxWidth: 480, margin: "14px auto" }}>{msg}</p>}
+      </div>
+      {sheet && <Inland shop={shops.find((s) => s.slug === sheet)!} onClose={(m) => { setSheet(null); if (m) setMsg(m); }} />}
+    </main>
+  );
+}
+
+function Inland({ shop, onClose }: { shop: { slug: string; name: string }; onClose: (m?: string) => void }) {
+  const [phone, setPhone] = useState("");
+  const [name, setName] = useState("");
+  const [agree, setAgree] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const text = consentText(shop.name, "hi");
+  return (
+    <div role="dialog" aria-modal="true" aria-label="Yaad dilaayein" style={{ position: "fixed", inset: 0, background: "rgba(28,18,16,.55)", display: "grid", alignItems: "end", zIndex: 60 }} onClick={() => onClose()}>
+      <form onClick={(e) => e.stopPropagation()} onSubmit={async (e) => {
+        e.preventDefault();
+        setErr(null);
+        if (!/^[6-9][0-9]{9}$/.test(phone)) return setErr("10 ankon ka mobile number daalo (6 se 9 se shuru).");
+        if (!agree) return setErr("Haan kehne ke liye dabba tick karo.");
+        setBusy(true);
+        const r = await fetch("/api/v1/wallet/opt-in", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ shopSlug: shop.slug, phone, firstName: name || undefined, consent: { version: CONSENT_VERSION, lang: "hi", checked: true } }) });
+        setBusy(false);
+        if (!r.ok) return setErr((await r.json()).message_hi);
+        onClose(`${shop.name} aapko WhatsApp par yaad dilayega. "Mera data hatao" se kabhi bhi band.`);
+      }}
+        style={{ background: "#BFD7E8", border: "3px solid var(--ink)", borderBottom: 0, padding: "18px 16px 26px", maxWidth: 520, width: "100%", margin: "0 auto", boxSizing: "border-box", animation: "rise .45s var(--spring-soft)", backgroundImage: "repeating-linear-gradient(-45deg, transparent 0 12px, rgba(215,38,30,.12) 12px 16px, transparent 16px 28px, rgba(14,138,134,.12) 28px 32px)" }}>
+        <p className="f-chalk" style={{ fontSize: 24, margin: "0 0 4px" }}>Agli baar yaad dilaayein?</p>
+        <p style={{ margin: "0 0 12px", fontSize: 14 }}>Antardeshiya patra · {shop.name}</p>
+        <label className="field">Naam (zaroori nahi)<input value={name} onChange={(e) => setName(e.target.value)} maxLength={30} autoComplete="given-name" /></label>
+        <label className="field" style={{ marginTop: 10 }}>Mobile (+91)<input value={phone} onChange={(e) => setPhone(e.target.value.replace(/\D/g, "").slice(0, 10))} inputMode="numeric" autoComplete="tel-national" /></label>
+        <label style={{ display: "flex", gap: 10, marginTop: 12, alignItems: "flex-start", fontSize: 14 }}>
+          <input type="checkbox" checked={agree} onChange={(e) => setAgree(e.target.checked)} style={{ width: 24, height: 24, flex: "none" }} /> {text}
+        </label>
+        {err && <p role="alert" style={{ color: "var(--press-red)", fontWeight: 700 }}>{err}</p>}
+        <div style={{ display: "flex", gap: 10, marginTop: 14 }}>
+          <button className="plate red" disabled={busy}>{busy ? "..." : "Haan, bhejo"}</button>
+          <button type="button" className="plate ghost" onClick={() => onClose()}>Rehne do</button>
+        </div>
+      </form>
+    </div>
+  );
+}
