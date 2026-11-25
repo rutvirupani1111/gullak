@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { Keeper, Label } from "@/components/art";
 import { PALETTES, pal } from "@/lib/art";
@@ -17,6 +17,12 @@ export function OwnerNavInner({ slug, name }: { slug: string; name: string }) {
   const links: [string, string][] = [["", "Ghar"], ["/hisaab", "Hisaab"], ["/wapas-bulao", "Purane grahak"], ["/poster", "Poster"], ["/staff", "Staff"], ["/chowkidar", "Chowkidar"], ["/settings", "Settings"]];
   const base = `/dukaan/${slug}`;
   const isOn = (h: string) => (h === "" ? path === base || path.startsWith(base + "/khel") : path.startsWith(base + h));
+  // on a narrow phone the menu scrolls sideways; the page you are on is always scrolled into view
+  useEffect(() => {
+    const el = document.querySelector<HTMLElement>(".owner-nav [aria-current=page]");
+    const box = el?.parentElement;
+    if (el && box) box.scrollLeft = Math.max(0, el.offsetLeft - box.clientWidth / 2 + el.offsetWidth / 2);
+  }, [path]);
   return (
     <nav className="noprint" aria-label="Dukaan ka menu" style={{ background: "var(--ink)", color: "var(--newsprint)", position: "sticky", top: 0, zIndex: 20 }}>
       <div className="wrap" style={{ display: "flex", gap: 4, alignItems: "center", padding: "4px 8px 4px 16px" }}>

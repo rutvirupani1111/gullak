@@ -381,7 +381,8 @@ export default function CustomerApp({ shop, query }: { shop: Shop; query: { lqt?
       {shop.is_demo && (
         <div className="demo-ribbon"><div>Demo dukaan: yeh asli dukaan nahi hai</div></div>
       )}
-      {pinned && phase !== "done" && <PinnedRibbon id={pinned.id} expiresAt={pinned.expiresAt} label={t("show")} />}
+      {/* fixed above the matchbox too, so a regular standing at the counter reaches the coupon in one tap */}
+      {pinned && phase !== "done" && <><PinnedRibbon id={pinned.id} expiresAt={pinned.expiresAt} label={t("show")} /><div aria-hidden="true" style={{ height: 47 }} /></>}
       <header className="wrap" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", paddingTop: 10, paddingBottom: 6 }}>
         <button className="plate small ghost" aria-label="Matchbox dobara kholo" onClick={() => dispatchEvent(new Event("gk-replay-box"))} style={{ "--pb": p.a } as React.CSSProperties}>
           <span className="f-display" style={{ fontSize: 20, color: textOn(p.a) }}>{shop.initial}</span>
@@ -611,7 +612,7 @@ function PinnedRibbon({ id, expiresAt, label }: { id: string; expiresAt: string;
   const d = Math.floor(ms / 86400000), h = Math.floor((ms % 86400000) / 3600000), m = Math.floor((ms % 3600000) / 60000);
   const left = now === null ? "" : d ? `${d} din ${h} ghante` : `${h}h ${m}m`;
   return (
-    <a href={`/w/${id}`} className="pin-ribbon" style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 10, minHeight: 44, background: "var(--press-red)", color: "#FFF6E0", fontWeight: 800, textDecoration: "none", borderBottom: "3px solid var(--ink)", position: "sticky", top: 0, zIndex: 40, padding: "0 12px" }}>
+    <a href={`/w/${id}`} className="pin-ribbon" style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 10, minHeight: 44, background: "var(--press-red)", color: "#FFF6E0", fontWeight: 800, textDecoration: "none", borderBottom: "3px solid var(--ink)", position: "fixed", top: 0, left: 0, right: 0, zIndex: 85, padding: "0 12px" }}>
       <svg width="26" height="26" viewBox="0 0 26 26" aria-hidden="true"><circle cx="13" cy="13" r="11" fill="#F4B400" stroke="#1C1210" strokeWidth="2" strokeDasharray="3 2" /><circle cx="13" cy="13" r="6" fill="none" stroke="#1C1210" strokeWidth="1.5" /></svg>
       <span>{label}</span>
       {left && <span className="f-mono" style={{ fontWeight: 400, fontSize: 13, opacity: 0.9 }}>{left} bache</span>}
@@ -621,7 +622,7 @@ function PinnedRibbon({ id, expiresAt, label }: { id: string; expiresAt: string;
 
 /** The hand-tied kraft tag of C8. The words sit inside the tag body, clear of the string's eyelet, and shrink to fit. */
 function HangTag({ text }: { text: string }) {
-  const fs = Math.max(14, Math.min(26, Math.floor(118 / Math.max(1, [...text].length * 0.48))));
+  const fs = Math.max(15, Math.min(26, Math.floor(124 / Math.max(1, [...text].length * 0.42))));
   return (
     <svg viewBox="0 0 220 160" width="100%" role="img" aria-label={text} style={{ display: "block", overflow: "visible" }}>
       <path d="M182 6 q-26 18 -8 52" stroke="#6E2C17" strokeWidth="2.5" fill="none" strokeDasharray="5 2" />
