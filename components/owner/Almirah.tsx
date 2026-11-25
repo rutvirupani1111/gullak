@@ -53,7 +53,8 @@ export default function Almirah({ slug, d }: { slug: string; d: D }) {
   const costPer100 = prizes.reduce((a, p) => a + (p.weight / total) * p.cost_paise, 0) * 100;
   const budgetPer100 = c.daily_budget_paise > 0 ? (c.daily_budget_paise / perDay) * 100 : Infinity;
   const beam = isFinite(budgetPer100) ? Math.max(-14, Math.min(14, ((costPer100 - budgetPer100) / budgetPer100) * 12)) : -6;
-  const dayRun = (p: Prize) => (p.remaining === null || p.weight === 0 ? Infinity : p.remaining / ((p.weight / total) * perDay));
+  // a daily cap slows a prize down, so days-to-empty uses whichever is smaller: its share of the crowd or its cap
+  const dayRun = (p: Prize) => (p.remaining === null || p.weight === 0 ? Infinity : p.remaining / Math.min((p.weight / total) * perDay, p.daily_cap ?? Infinity));
   const stockDays = Math.min(...prizes.map(dayRun));
   const overBudget = costPer100 > budgetPer100;
 

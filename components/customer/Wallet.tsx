@@ -129,6 +129,12 @@ export default function Wallet({ initial }: { initial: WalletCoupon[] }) {
           </div>
         )}
         {msg && <p className="paper" role="status" style={{ padding: 12, maxWidth: 480, margin: "14px auto" }}>{msg}</p>}
+        {coupons.length > 0 && (
+          <p className="kraftp" style={{ textAlign: "center", margin: "22px auto 0", maxWidth: 420, padding: "8px 12px", fontSize: 14 }}>
+            Naya phone liya? <a className="tap" href="/w/transfer" style={{ fontWeight: 800, color: "var(--press-red)" }}>Gullak naye phone mein le jao</a>
+            <span style={{ display: "block", opacity: 0.8 }}>New phone? Move your gullak with one QR.</span>
+          </p>
+        )}
       </div>
       {sheet && <Inland shop={shops.find((s) => s.slug === sheet)!} onClose={(m) => { setSheet(null); if (m) setMsg(m); }} />}
     </main>

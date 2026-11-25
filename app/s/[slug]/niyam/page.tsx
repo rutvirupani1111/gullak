@@ -28,7 +28,7 @@ export default async function Rules({ params }: { params: Promise<{ slug: string
             <h2 className="f-serif" style={{ fontSize: 22 }}>{d.c.title_hi} / {d.c.title_en}</h2>
             <ul style={{ lineHeight: 1.6, paddingLeft: 18 }}>
               <li>Taareekh / Dates: {fmt(d.c.starts_at)} se {fmt(d.c.ends_at)} tak</li>
-              <li>Samay / Hours: {minuteLabel(d.c.open_minute)} se {minuteLabel(d.c.close_minute % 1440)} tak (Asia/Kolkata)</li>
+              <li>Samay / Hours: {d.c.open_minute === 0 && d.c.close_minute >= 1440 ? "poore din, raat 12 se raat 12 tak / all day" : `${minuteLabel(d.c.open_minute)} se ${minuteLabel(d.c.close_minute % 1440)} tak`} (Asia/Kolkata)</li>
               <li><b>Khelne ke liye kuch kharidna zaroori nahi.</b> No purchase is necessary to play.</li>
               <li>Ek phone, ek khel har {d.c.play_period === "day" ? "din" : d.c.play_period === "week" ? "hafte" : "campaign"} / One play per device per {d.c.play_period}. After you share your number, also one play per number.</li>
               {d.c.live_qr_required && <li>Counter ke phone ka QR scan karna zaroori hai / The live QR on the counter phone is required.</li>}
