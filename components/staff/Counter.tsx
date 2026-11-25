@@ -238,8 +238,13 @@ function Thappa({ me, setCount, logout }: { me: { name: string; shop: { slug: st
                     <p style={{ margin: "4px 0 0", fontSize: 14 }}>Visit {look.visitN} · {look.prize!.minBill ? `min bill ₹${look.prize!.minBill / 100} · ` : ""}khatam {exp!.toLocaleDateString("en-IN", { day: "numeric", month: "short" })}</p>
                   </div>
                 </div>
-                <p style={{ fontSize: 13, margin: "10px 0 0" }}>Customer ki screen ki mohar is se milao. Alag ho to coupon nakli hai.</p>
-                {look.state === "redeemed" && !stamped && <Blot text={`Diya gaya ${look.redeemedAtLabel} aaj, ${look.redeemedBy ?? "staff"} ne`} />}
+                {look.state === "issued" && <p style={{ fontSize: 13, margin: "10px 0 0" }}>Customer ki screen ki mohar is se milao. Alag ho to coupon nakli hai.</p>}
+                {look.state === "redeemed" && !stamped && (
+                  <>
+                    <p style={{ margin: "12px 0 0", fontWeight: 800, color: "var(--press-red)", maxWidth: "58%" }}>Diya gaya {look.redeemedAtLabel} aaj, {look.redeemedBy ?? "staff"} ne.<span style={{ display: "block", fontWeight: 600, fontSize: 13, color: "var(--ink)" }}>Already given. Do not give it again.</span></p>
+                    <Blot text="PAID / दिया" />
+                  </>
+                )}
                 {look.state === "expired" && <p style={{ fontWeight: 800, color: "var(--press-red)" }}>Khatam ho gaya. This coupon has expired.</p>}
                 {look.state === "void" && <p style={{ fontWeight: 800, color: "var(--press-red)" }}>Radd. This coupon is void.</p>}
                 {stamped && <Blot text="PAID / दिया" fresh />}
@@ -290,7 +295,7 @@ function Slip({ children, tone, torn }: { children: React.ReactNode; tone: strin
 }
 function Blot({ text, fresh }: { text: string; fresh?: boolean }) {
   return (
-    <div aria-live="polite" style={{ position: "absolute", right: 10, bottom: 10, transform: "rotate(-12deg)", border: "4px double #D7261E", color: "#D7261E", padding: "6px 12px", fontWeight: 800, fontSize: fresh ? 26 : 15, background: "rgba(245,233,207,.6)", animation: fresh ? "blot .35s var(--spring-snap) both" : undefined, maxWidth: "70%" }}>
+    <div aria-live="polite" style={{ position: "absolute", right: 10, bottom: 10, transform: "rotate(-12deg)", border: "4px double #D7261E", color: "#D7261E", padding: "6px 12px", fontWeight: 800, fontSize: fresh ? 26 : 20, background: "rgba(245,233,207,.6)", animation: fresh ? "blot .35s var(--spring-snap) both" : undefined, maxWidth: "70%" }}>
       {text}
       <style>{"@keyframes blot{from{transform:rotate(-12deg) scale(.4);opacity:0}to{transform:rotate(-12deg) scale(1);opacity:1}}"}</style>
     </div>
