@@ -302,7 +302,7 @@ export default function Almirah({ slug, d }: { slug: string; d: D }) {
             Sirf hunar ka khel (gullak toss)
           </label>
         </div>
-        <p style={{ fontSize: 14 }}><a href={`/s/${slug}/niyam`}>Niyam ka panna dekho</a>: yeh odds aur stock apne aap wahan chhapte hain.</p>
+        <p style={{ fontSize: 14 }}><a className="tap" href={`/s/${slug}/niyam`}>Niyam ka panna dekho</a>: yeh odds aur stock apne aap wahan chhapte hain.</p>
       </section>
 
       {toast && (
@@ -419,11 +419,11 @@ function WheelEditor({ prizes, total, shift }: { prizes: Prize[]; total: number;
         <circle cx="150" cy="150" r="20" fill="#F5E9CF" stroke="#1C1210" strokeWidth="3" />
         {segs.slice(0, -1).map((s, i) => {
           const [x, y] = pt(s.end, 140);
-          const [hx, hy] = pt(s.end, 124);
+          const [hx, hy] = pt(s.end, 116);
           return (
             <g key={"h" + i}>
               <line x1="150" y1="150" x2={x} y2={y} stroke="#1C1210" strokeWidth="3" />
-              <circle cx={hx} cy={hy} r="15" fill="#F5E9CF" stroke="#1C1210" strokeWidth="3" tabIndex={0} role="slider"
+              <circle cx={hx} cy={hy} r="21" fill="#F5E9CF" stroke="#1C1210" strokeWidth="3" tabIndex={0} role="slider"
                 aria-label={`${prizes[i].label_hi} aur ${prizes[i + 1].label_hi} ke beech`} aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round((prizes[i].weight / total) * 1000) / 10}
                 style={{ cursor: "grab", outline: "none" }}
                 onPointerDown={(e) => { drag.current = i; (e.target as Element).setPointerCapture?.(e.pointerId); }}

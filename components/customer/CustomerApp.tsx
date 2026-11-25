@@ -31,6 +31,7 @@ const T = {
   wallet: { hi: "गुल्लक खोलो", hinglish: "Gullak kholo", en: "Open my gullak" },
   rules: { hi: "नियम और असली odds", hinglish: "Niyam aur asli odds", en: "Rules and real odds" },
   left: { hi: "बचे", hinglish: "bache", en: "left" },
+  always: { hi: "हमेशा मिलता है", hinglish: "hamesha milta hai", en: "never runs out" },
   liveQr: { hi: "काउंटर वाले फ़ोन का QR स्कैन करो।", hinglish: "Counter wale phone ka QR scan karo.", en: "Scan the QR on the counter phone." },
   rate: { hi: "इस नेटवर्क से बहुत खेल हो गए। थोड़ी देर बाद आना।", hinglish: "Is network se bahut khel ho gaye. Thodi der baad aana.", en: "Too many plays from this network. Come back a little later." },
   unverified: { hi: "मोहर यहाँ जाँच नहीं पाए। काउंटर पर जाँच होगी।", hinglish: "Mohar jaanch nahi paaye. Counter par dikhao, wahan jaanch hogi.", en: "Could not check the seal here. Staff will check it at the counter." },
@@ -339,20 +340,21 @@ export default function CustomerApp({ shop, query }: { shop: Shop; query: { lqt?
             {c ? (lang === "hi" ? c.title_hi : c.title_en) : " "}
           </p>
 
-          <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) 128px", gap: 10, alignItems: "end", marginTop: 14 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) clamp(96px, 30vw, 128px)", gap: 10, alignItems: "end", marginTop: 14 }}>
             <div className="chalkboard" style={{ padding: "12px 14px", minHeight: 210, animation: box === "open" ? "rise .5s var(--spring-soft) both" : undefined }}>
               <div className="f-chalk" style={{ fontSize: 22, borderBottom: "1px dashed rgba(237,230,211,.5)", marginBottom: 6 }}>{t("prizes")}</div>
               {!ready && Array.from({ length: 4 }, (_, i) => <div key={i} className="skel" style={{ height: 18, margin: "10px 0", width: `${80 - i * 12}%`, background: "rgba(237,230,211,.18)" }} />)}
-              {ready?.prizes.map((pz) => (
-                <div key={pz.id} className="f-chalk" style={{ display: "flex", justifyContent: "space-between", gap: 8, fontSize: 18, padding: "3px 0", opacity: pz.remaining === 0 ? 0.4 : 1 }}>
-                  <span style={{ textDecoration: pz.remaining === 0 ? "line-through" : undefined }}>{prizeName(pz)}</span>
-                  <span style={{ whiteSpace: "nowrap", color: "#F4B400" }}>
-                    {pz.remaining !== null ? `${pz.remaining} ${t("left")}` : "∞"} · {pz.pct}%
-                  </span>
+              {ready?.prizes.map((pz, i) => (
+                <div key={pz.id} className="f-chalk" style={{ padding: "4px 0", opacity: pz.remaining === 0 ? 0.4 : 1, animation: box === "open" ? `rise .4s var(--spring-soft) ${120 + i * 70}ms both` : undefined }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8, fontSize: 18, lineHeight: 1.15 }}>
+                    <span style={{ textDecoration: pz.remaining === 0 ? "line-through" : undefined, minWidth: 0 }}>{prizeName(pz)}</span>
+                    <span style={{ whiteSpace: "nowrap", color: "#F4B400" }}>{pz.pct}%</span>
+                  </div>
+                  <div style={{ fontSize: 14, opacity: 0.75 }}>{pz.remaining !== null ? `${pz.remaining} ${t("left")}` : t("always")}</div>
                 </div>
               ))}
             </div>
-            <Keeper k={shop.keeper} apron={p.b} size={128} wave={box === "open"} className="keeper-in" />
+            <Keeper k={shop.keeper} apron={p.b} size={128} wave={box === "open"} className="keeper-in" style={{ width: "100%", height: "auto" }} />
           </div>
           <div style={{ height: 22, background: "#7A4A26", border: "2.5px solid var(--ink)", marginTop: -2, boxShadow: "0 6px 0 var(--ink)" }} />
 

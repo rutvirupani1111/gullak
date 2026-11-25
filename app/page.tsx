@@ -60,18 +60,21 @@ export default async function Lane() {
           <p className="f-serif" style={{ margin: 0, fontWeight: 700, fontSize: 18, color: "#1C1210" }}>गुल्लक</p>
           <h1 className="f-display truck" style={{ fontSize: "clamp(64px, 19vw, 132px)", lineHeight: 0.92, margin: "0 0 6px", color: "#F5E9CF", ["--sh" as string]: "#D7261E" }}>Gullak</h1>
           <p className="f-serif" style={{ margin: 0, fontSize: "clamp(20px, 5.4vw, 28px)", fontWeight: 700, color: "#1C1210" }}>Dukaan ka khel, counter ka thappa.</p>
-          <p style={{ margin: "8px 0 0", maxWidth: 520, fontWeight: 600, color: "#1C1210" }}>
-            Chai tapri, momo thela, kirana, salon. Grahak QR scan karta hai, 10 second khelta hai, aur jeeta hua coupon phone ki gullak mein rakhta hai.
-          </p>
-          <p style={{ margin: "4px 0 0", maxWidth: 520, fontSize: 14, color: "#1C1210" }}>For small shops: a sealed scan-and-play game, a coupon kept in a clay gullak on the phone, one stamp at the counter.</p>
-          <div className="lane-actions" style={{ marginTop: 16 }}>
-            <a className="plate red" href="/demo" style={{ fontSize: 18 }}>Apna demo kholo</a>
-            <a className="plate ghost" href="#step-tapri">Kaise chalta hai?</a>
+          {/* a handbill pasted on the wall: the words sit on paper, never on the busy rooftops */}
+          <div className="handbill">
+            <p style={{ margin: 0, fontWeight: 600 }}>
+              Grahak QR scan karta hai, 10 second khelta hai, aur jeeta hua coupon phone ki gullak mein rakhta hai. Staff counter par ek thappa lagata hai.
+            </p>
+            <p style={{ margin: "4px 0 0", fontSize: 14 }}>For chai tapris and small shops: a sealed 10-second game, a coupon kept in a clay gullak on the phone, one stamp at the counter.</p>
+            <div className="lane-actions" style={{ marginTop: 12 }}>
+              <a className="plate red" href="/demo" style={{ fontSize: 18 }}>Apna demo kholo</a>
+              <a className="plate ghost" href="#step-tapri">Kaise chalta hai?</a>
+            </div>
+            <p style={{ margin: "10px 0 0", fontSize: 14 }}>
+              <b>Demo mein:</b> aapki apni nakli dukaan, 4 kadam likhe hue. Grahak ban ke khelo, staff ban ke thappa lagao, odds badlo, hisaab dekho.
+              <span style={{ display: "block", opacity: 0.8 }}>Your own pretend shop with 4 steps written out. No sign-up.</span>
+            </p>
           </div>
-          <p style={{ margin: "10px 0 0", maxWidth: 520, fontSize: 14, color: "#1C1210", fontWeight: 600 }}>
-            Demo mein aapko ek nakli dukaan milti hai, sirf aapke liye. Wahan 4 kadam likhe hain: grahak ban ke khelo, staff ban ke thappa lagao, odds badlo, hisaab dekho.
-            <span style={{ display: "block", fontWeight: 400 }}>Your own pretend shop, with 4 steps written out: play as a customer, stamp as staff, change the odds, read the count.</span>
-          </p>
         </div>
         <div className="lane-parapet">
           <GullakArt size={92} className="parapet-gullak" />

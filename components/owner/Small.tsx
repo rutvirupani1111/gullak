@@ -20,7 +20,7 @@ export function OwnerNavInner({ slug, name }: { slug: string; name: string }) {
   return (
     <nav className="noprint" aria-label="Dukaan ka menu" style={{ background: "var(--ink)", color: "var(--newsprint)", position: "sticky", top: 0, zIndex: 20 }}>
       <div className="wrap" style={{ display: "flex", gap: 4, alignItems: "center", padding: "4px 8px 4px 16px" }}>
-        <a href={base} className="f-display" style={{ color: "var(--haldi)", fontSize: 18, textDecoration: "none", whiteSpace: "nowrap", maxWidth: "34vw", overflow: "hidden", textOverflow: "ellipsis", flex: "none" }}>{name}</a>
+        <a href={base} className="f-display" style={{ color: "var(--haldi)", fontSize: 18, textDecoration: "none", whiteSpace: "nowrap", maxWidth: "34vw", overflow: "hidden", textOverflow: "ellipsis", flex: "none", display: "inline-block", padding: "11px 0" }}>{name}</a>
         <div className="owner-nav" style={{ display: "flex", gap: 2, overflowX: "auto", flex: 1, minWidth: 0, paddingRight: 36, scrollbarWidth: "none" }}>
           {links.map(([h, l]) => (
             <a key={h} href={base + h} aria-current={isOn(h) ? "page" : undefined}
@@ -84,7 +84,7 @@ export function AuthForm({ mode }: { mode: "login" | "signup" | "recover" }) {
         {err && <p role="alert" style={{ color: "var(--press-red)", fontWeight: 700, margin: 0 }}>{err}</p>}
         <button className="plate red" disabled={busy}>{busy ? "..." : mode === "login" ? "Andar chalo" : mode === "signup" ? "Account banao" : "Password badlo"}</button>
         <p style={{ margin: 0, fontSize: 14 }}>
-          {mode === "login" ? <><a href="/signup">Naya account</a> · <a href="/recover">Password bhool gaye?</a></> : <a href="/login">Pehle se account hai? Login</a>} · <a href="/demo">Bina login demo</a>
+          {mode === "login" ? <><a className="tap" href="/signup">Naya account</a> · <a className="tap" href="/recover">Password bhool gaye?</a></> : <a className="tap" href="/login">Pehle se account hai? Login</a>} · <a className="tap" href="/demo">Bina login demo</a>
         </p>
       </form>
     </main>

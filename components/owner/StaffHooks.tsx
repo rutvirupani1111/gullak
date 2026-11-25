@@ -36,7 +36,7 @@ export default function StaffHooks({ shopId, slug, initial }: { shopId: string; 
     <main className="wrap" style={{ padding: "18px 16px 100px" }}>
       <h1 className="f-display" style={{ fontSize: "clamp(30px, 7vw, 44px)", margin: 0 }}>Staff</h1>
       <p className="f-serif" style={{ margin: "2px 0 0", fontWeight: 700 }}>Chaabi ke khoonte</p>
-      <Help hi={<>Har staff ki ek chaabi: naam aur 4 ank ka PIN. Staff counter wale phone par <a href="/counter" onClick={() => { try { localStorage.setItem("gk.counter.slug", slug); } catch {} }}>Counter screen</a> kholta hai, dukaan ka web naam <b className="f-mono">{slug}</b> aur apna PIN daalta hai.</>}
+      <Help hi={<>Har staff ki ek chaabi: naam aur 4 ank ka PIN. Staff counter wale phone par <a className="tap" href="/counter" onClick={() => { try { localStorage.setItem("gk.counter.slug", slug); } catch {} }}>Counter screen</a> kholta hai, dukaan ka web naam <b className="f-mono">{slug}</b> aur apna PIN daalta hai.</>}
         en={<>One key per staff member: a name and a 4-digit PIN. Staff open the Counter screen on the shop phone and enter the shop name <b className="f-mono">{slug}</b> and their PIN.</>} />
 
       {/* the board of hooks */}
