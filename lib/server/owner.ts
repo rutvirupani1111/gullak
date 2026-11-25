@@ -29,6 +29,15 @@ export async function shopHome(shopId: string) {
          and n > 3 * coalesce((select percentile_cont(.5) within group (order by n) from d x where x.staff_id = t.staff_id and x.d < t.d), 0) limit 1`,
       [shopId],
     );
-    return { shop: shop!, campaigns, today: today!, staff, alert };
+    // what the owner has already done, so the home page can say what to do next (read, never guessed)
+    const progress = await q.one(
+      `select (select count(*)::int from plays where shop_id = $1) plays,
+              (select count(*)::int from redemptions where shop_id = $1 and undone_at is null) stamps,
+              (select count(*)::int from campaigns where shop_id = $1 and status = 'live') live,
+              (select count(*)::int from prizes where shop_id = $1 and version > 1)
+                + (select count(*)::int from campaigns where shop_id = $1 and version > 1 and status <> 'ended') tuned`,
+      [shopId],
+    );
+    return { shop: shop!, campaigns, today: today!, staff, alert, progress: progress! };
   });
 }

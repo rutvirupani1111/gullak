@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { computeStopAngle, seeded, segments } from "@/lib/wheel";
 import { gullakX, judgeThrow, TOSS } from "@/lib/toss-sim";
 import { pal, labelSvg } from "@/lib/art";
+import { SPRING_SNAP } from "@/lib/motion";
 
 export type PlayResult = {
   playId: string; couponId: string | null; payload: Record<string, unknown> | null; sig: string | null;
@@ -60,7 +61,7 @@ export function Chakri({ prizes, layout: initial, play, onLanded, lang, calm, pa
         angle.current = land.from + (land.to + 4 - land.from) * e;
         vel = (angle.current - prev) / Math.max(dt, 0.001);
         if (s >= 1) {
-          wheel.current!.animate([{ transform: `rotate(${land.to + 4}deg)` }, { transform: `rotate(${land.to}deg)` }], { duration: 350, easing: "var(--spring-snap)", fill: "forwards" });
+          wheel.current!.animate([{ transform: `rotate(${land.to + 4}deg)` }, { transform: `rotate(${land.to}deg)` }], { duration: 350, easing: SPRING_SNAP, fill: "forwards" });
           angle.current = land.to;
           cancelAnimationFrame(raf);
           return;
@@ -138,9 +139,10 @@ export function Chakri({ prizes, layout: initial, play, onLanded, lang, calm, pa
         </svg>
         <canvas ref={sparkC} width={300} height={300} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", pointerEvents: "none" }} />
       </div>
-      <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "grid", gap: 4, width: "100%", maxWidth: 340 }}>
+      {/* the printed odds slip under the wheel: every segment is its real chance, nothing hidden */}
+      <ul className="kraftp" aria-label={lang === "hi" ? "Har inaam ke asli odds" : "The real odds of each prize"} style={{ listStyle: "none", padding: "10px 12px", margin: 0, display: "grid", gap: 4, width: "100%", maxWidth: 340, boxSizing: "border-box", boxShadow: "3px 4px 0 var(--ink)" }}>
         {segs.map((s, i) => (
-          <li key={s.prizeId} style={{ display: "flex", alignItems: "center", gap: 8, fontWeight: win === s.prizeId ? 800 : 500 }} id={win === s.prizeId ? "gk-win-label" : undefined}>
+          <li key={s.prizeId} style={{ display: "flex", alignItems: "center", gap: 8, fontWeight: win === s.prizeId ? 800 : 500, background: win === s.prizeId ? "#FFE6A0" : undefined, transition: "background .3s" }} id={win === s.prizeId ? "gk-win-label" : undefined}>
             <span style={{ width: 14, height: 14, background: COLS[i % COLS.length], border: "2px solid var(--ink)", flex: "none" }} />
             <span style={{ flex: 1 }}>{name(s.prizeId)}</span>
             <span className="f-mono">{s.pct}%</span>

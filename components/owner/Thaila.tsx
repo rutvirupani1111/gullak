@@ -2,7 +2,7 @@
 // O6: the postman's cloth bag. One postcard per opted-in regular who has not come back in N days.
 // Nothing is sent automatically: the owner taps, WhatsApp opens with the message, the owner sends it.
 import { useEffect, useRef, useState } from "react";
-import { api } from "./Small";
+import { api, Help } from "./Small";
 
 type Row = { id: string; name: string | null; masked: string; lastDay: string | null; visits: number; lastPrize: string | null; sentAt: string | null };
 
@@ -54,8 +54,11 @@ export default function Thaila({ shopId, days, list, demo }: { shopId: string; d
 
   return (
     <main className="wrap" style={{ padding: "18px 16px 80px" }}>
-      <h1 className="f-display" style={{ fontSize: "clamp(30px, 7vw, 44px)", margin: 0 }}>Chitthi ka thaila</h1>
-      <p style={{ margin: "4px 0 12px" }}>Jinhone WhatsApp ke liye haan kaha, aur {days} din se nahi aaye. Har chitthi mein ek baar ka bonus khel, 7 din tak. Roz zyada se zyada 20.</p>
+      <h1 className="f-display" style={{ fontSize: "clamp(30px, 7vw, 44px)", margin: 0 }}>Purane grahak</h1>
+      <p className="f-serif" style={{ margin: "2px 0 0", fontWeight: 700 }}>Chitthi ka thaila</p>
+      <Help hi={<>Yeh woh grahak hain jinhone WhatsApp ke liye haan kaha, par {days} din se nahi aaye. Chitthi par &quot;WhatsApp kholo&quot; dabao: message taiyaar milega, aap khud bhejo. Har chitthi mein ek bonus khel hai, 7 din tak. Roz 20 tak.</>}
+        en={<>Regulars who said yes to WhatsApp but have not come in {days} days. Tap &quot;WhatsApp kholo&quot;: the message is ready, you send it yourself. Each one carries a bonus game, valid 7 days. Up to 20 a day.</>} />
+      <div style={{ height: 12 }} />
       <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
         {[7, 14, 30].map((n) => <a key={n} className={"plate small " + (n === days ? "" : "ghost")} href={`?days=${n}`} aria-current={n === days ? "page" : undefined}>{n} din</a>)}
       </div>
@@ -73,7 +76,9 @@ export default function Thaila({ shopId, days, list, demo }: { shopId: string; d
           {rows.length === 0 && (
             <div style={{ gridColumn: "1 / -1", color: "var(--newsprint)", padding: 10 }}>
               <p className="f-chalk" style={{ fontSize: 22, margin: 0 }}>Thaila khaali hai.</p>
-              <p style={{ margin: "6px 0 0" }}>Jab koi grahak jeet ke baad gullak mein "Agli baar yaad dilaayein?" par haan kahega aur {days} din nahi aayega, uski chitthi yahan aayegi. Chhota din chuno: <a href="?days=7" style={{ color: "var(--haldi)" }}>7 din</a>.</p>
+              <p style={{ margin: "6px 0 0" }}>Jab koi grahak jeet ke baad gullak mein &quot;Agli baar yaad dilaayein?&quot; par haan kahega aur {days} din nahi aayega, uski chitthi yahan aayegi. Chhota din chuno: <a href="?days=7" style={{ color: "var(--haldi)" }}>7 din</a>.</p>
+              <p style={{ margin: "6px 0 0", fontSize: 14, opacity: 0.85 }}>Empty for now. When a customer says yes to reminders in their gullak and stays away, their postcard lands here.</p>
+              <a className="plate small" href="/w" style={{ marginTop: 10 }}>Dekho grahak ko kya dikhta hai</a>
             </div>
           )}
           {rows.map((r, i) => {

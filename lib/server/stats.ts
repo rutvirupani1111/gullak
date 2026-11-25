@@ -38,10 +38,10 @@ export async function stats(shopId: string, from: string, to: string, campaignId
          select hour h, scans, opens, plays, wins, redemptions, paise_given paise from shop_hourly_stats
           where shop_id = $1 and hour >= $2::date - interval '330 minutes' and hour < $3::date + interval '1 day' - interval '330 minutes' ${cFilter}
          union all
-         select date_trunc('hour', created_at), (kind='scan')::int, (kind='open')::int, (kind='play')::int, (kind='win')::int,
-                (kind='redeem')::int - (kind='undo')::int, case when kind='win' then paise else 0 end
-           from events, shops sh where sh.id = $1 and events.shop_id = $1 and created_at >= sh.stats_watermark
-            and created_at >= $2::date - interval '330 minutes' and created_at < $3::date + interval '1 day' - interval '330 minutes' ${cFilter}
+         select date_trunc('hour', e.created_at), (e.kind='scan')::int, (e.kind='open')::int, (e.kind='play')::int, (e.kind='win')::int,
+                (e.kind='redeem')::int - (e.kind='undo')::int, case when e.kind='win' then e.paise else 0 end
+           from events e join shops sh on sh.id = e.shop_id where e.shop_id = $1 and e.created_at >= sh.stats_watermark
+            and e.created_at >= $2::date - interval '330 minutes' and e.created_at < $3::date + interval '1 day' - interval '330 minutes' ${cFilter.replace("campaign_id", "e.campaign_id")}
        ) x group by h order by h`,
       params,
     );

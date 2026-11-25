@@ -2,7 +2,7 @@
 // O2: the steel almirah of prize jars, with the brass tarazu on top and the live chakri editor beside it.
 // Every change shows at once, is sent debounced with If-Match, and can be taken back for 6 seconds.
 import { useEffect, useMemo, useRef, useState } from "react";
-import { api } from "./Small";
+import { api, Help } from "./Small";
 import { GameProp } from "./GameProp";
 import { rupees } from "@/lib/art";
 import { minuteLabel } from "@/lib/time";
@@ -169,11 +169,11 @@ export default function Almirah({ slug, d }: { slug: string; d: D }) {
 
   return (
     <main className="wrap" style={{ padding: "18px 16px 120px" }}>
-      <a href={`/dukaan/${slug}`} style={{ fontWeight: 700, display: "inline-block", padding: "10px 0" }}>Darwaze par wapas</a>
+      <a href={`/dukaan/${slug}`} style={{ fontWeight: 700, display: "inline-block", padding: "10px 0" }}>Ghar par wapas</a>
       <div style={{ display: "flex", flexWrap: "wrap", gap: 12, alignItems: "end", justifyContent: "space-between" }}>
         <div>
           <h1 className="f-display" style={{ fontSize: "clamp(30px, 7vw, 44px)", margin: 0, lineHeight: 1.05 }}>{c.name}</h1>
-          <p className="f-serif" style={{ margin: "4px 0 0", fontWeight: 500 }}>Almirah aur tarazu · <b style={{ color: c.status === "live" ? "var(--paan)" : "var(--clay-deep)" }}>{({ live: "Chalu", paused: "Ruka", draft: "Kaccha", ended: "Khatam" } as Record<string, string>)[c.status]}</b></p>
+          <p className="f-serif" style={{ margin: "4px 0 0", fontWeight: 500 }}>Inaam aur odds · <b style={{ color: c.status === "live" ? "var(--paan)" : "var(--clay-deep)" }}>{({ live: "Chalu", paused: "Ruka", draft: "Kaccha", ended: "Khatam" } as Record<string, string>)[c.status]}</b></p>
         </div>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           {c.status !== "live" && c.status !== "ended" && <button className="plate paan" onClick={() => status("publish")}>Chalu karo</button>}
@@ -197,6 +197,9 @@ export default function Almirah({ slug, d }: { slug: string; d: D }) {
           </div>
         </div>
       )}
+
+      <Help hi={<>Har jar ek inaam hai, aur uske andar ka rang bacha hua stock. <b>+ / −</b> se stock badlo, chakri ke gol button khiskao ya <b>+ / −</b> se odds badlo. Har badlav turant save hota hai; galti ho to neeche <b>Wapas lo</b> dabao. Tarazu batata hai 100 khel par kitna kharch, aur stock kitne din chalega.</>}
+        en={<>Each jar is a prize; its fill is the stock left. Change stock with + and −, and odds by dragging the round handles or with + and −. Every change saves at once; press Wapas lo (undo) to take it back. The scale shows the cost per 100 games and how many days the stock lasts.</>} />
 
       {/* the tarazu: rupees per 100 plays against how many days the stock lasts */}
       <Tarazu beam={beam} cost={costPer100} budget={budgetPer100} days={stockDays} overBudget={overBudget} guessed={guessed} perDay={perDay} />
@@ -267,7 +270,8 @@ export default function Almirah({ slug, d }: { slug: string; d: D }) {
 
       {/* campaign settings: game cart, hours, period, budget, guards */}
       <section style={{ marginTop: 34 }}>
-        <h2 className="f-serif" style={{ fontSize: 26, margin: "0 0 10px" }}>Khel ki gaadi</h2>
+        <h2 className="f-serif" style={{ fontSize: 26, margin: "0 0 4px" }}>Kaunsa khel? <span style={{ fontSize: 15, fontWeight: 500 }}>Which game</span></h2>
+        <p style={{ margin: "0 0 10px", fontSize: 14 }}>Grahak ko yahi khel dikhega. Nateeja har khel mein server hi tay karta hai.</p>
         <div role="radiogroup" aria-label="Khel chuno" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 200px), 1fr))", gap: 12 }}>
           {GAMES.map(([g, t, s]) => (
             <button key={g} role="radio" aria-checked={c.game === g} onClick={() => c.game !== g && saveCamp({ game: g })} className="kraftp"

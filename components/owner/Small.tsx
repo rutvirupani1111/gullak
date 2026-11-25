@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import { usePathname } from "next/navigation";
 import { Keeper, Label } from "@/components/art";
 import { PALETTES, pal } from "@/lib/art";
 
@@ -9,17 +10,37 @@ export async function api(url: string, method: string, body?: unknown, headers: 
   return { ok: r.ok, status: r.status, d };
 }
 
+/** Owner navigation in plain words. The scene names (almirah, thaila, khoonte) stay inside the pages as art,
+ *  but the menu says what each page is for, so nobody has to guess. */
 export function OwnerNavInner({ slug, name }: { slug: string; name: string }) {
-  const links = [["", "Darwaza"], ["/hisaab", "Calendar"], ["/wapas-bulao", "Wapas bulao"], ["/poster", "Poster"], ["/staff", "Staff"], ["/chowkidar", "Chowkidar"]];
+  const path = usePathname() ?? "";
+  const links: [string, string][] = [["", "Ghar"], ["/hisaab", "Hisaab"], ["/wapas-bulao", "Purane grahak"], ["/poster", "Poster"], ["/staff", "Staff"], ["/chowkidar", "Chowkidar"], ["/settings", "Settings"]];
+  const base = `/dukaan/${slug}`;
+  const isOn = (h: string) => (h === "" ? path === base || path.startsWith(base + "/khel") : path.startsWith(base + h));
   return (
-    <nav className="noprint" style={{ background: "var(--ink)", color: "var(--newsprint)", position: "sticky", top: 0, zIndex: 20 }}>
-      <div className="wrap" style={{ display: "flex", gap: 6, alignItems: "center", overflowX: "auto", padding: "6px 16px" }}>
-        <a href={`/dukaan/${slug}`} className="f-display" style={{ color: "var(--haldi)", fontSize: 20, textDecoration: "none", whiteSpace: "nowrap", marginRight: 6 }}>{name}</a>
-        {links.map(([h, l]) => <a key={h} href={`/dukaan/${slug}${h}`} style={{ color: "var(--newsprint)", padding: "12px 8px", whiteSpace: "nowrap", fontWeight: 600, fontSize: 14 }}>{l}</a>)}
-        <a href={`/s/${slug}`} style={{ color: "var(--haldi)", padding: "12px 8px", whiteSpace: "nowrap", fontWeight: 700, fontSize: 14 }}>Grahak ki nazar se</a>
-        <button onClick={async () => { await api("/api/v1/auth/logout", "POST", {}); location.href = "/"; }} style={{ marginLeft: "auto", background: "none", color: "var(--newsprint)", border: "1px solid", padding: "8px 10px", minHeight: 40 }}>Bahar</button>
+    <nav className="noprint" aria-label="Dukaan ka menu" style={{ background: "var(--ink)", color: "var(--newsprint)", position: "sticky", top: 0, zIndex: 20 }}>
+      <div className="wrap" style={{ display: "flex", gap: 4, alignItems: "center", padding: "4px 8px 4px 16px" }}>
+        <a href={base} className="f-display" style={{ color: "var(--haldi)", fontSize: 18, textDecoration: "none", whiteSpace: "nowrap", maxWidth: "34vw", overflow: "hidden", textOverflow: "ellipsis", flex: "none" }}>{name}</a>
+        <div className="owner-nav" style={{ display: "flex", gap: 2, overflowX: "auto", flex: 1, minWidth: 0, paddingRight: 36, scrollbarWidth: "none" }}>
+          {links.map(([h, l]) => (
+            <a key={h} href={base + h} aria-current={isOn(h) ? "page" : undefined}
+              style={{ color: isOn(h) ? "var(--ink)" : "var(--newsprint)", background: isOn(h) ? "var(--haldi)" : "transparent", padding: "11px 9px", whiteSpace: "nowrap", fontWeight: 700, fontSize: 14, textDecoration: "none" }}>{l}</a>
+          ))}
+          <a href={`/s/${slug}`} style={{ color: "var(--haldi)", padding: "11px 9px", whiteSpace: "nowrap", fontWeight: 700, fontSize: 14 }}>Grahak ki nazar se</a>
+        </div>
+        <button onClick={async () => { await api("/api/v1/auth/logout", "POST", {}); location.href = "/"; }} style={{ flex: "none", background: "none", color: "var(--newsprint)", border: "1px solid", padding: "8px 10px", minHeight: 44, cursor: "pointer" }}>Bahar</button>
       </div>
     </nav>
+  );
+}
+
+/** One plain line under every owner page title: what this page is for and what to do first, in Hinglish and English. */
+export function Help({ hi, en }: { hi: React.ReactNode; en: React.ReactNode }) {
+  return (
+    <p className="help">
+      {hi}
+      <small>{en}</small>
+    </p>
   );
 }
 
@@ -91,7 +112,10 @@ export function SetupForm() {
         if (!r.ok) return setErr(r.d.message_hi);
         location.href = `/dukaan/${r.d.slug}`;
       }}>
-        <h1 className="f-display" style={{ margin: 0, fontSize: 34 }}>Dukaan banao</h1>
+        <div>
+          <h1 className="f-display" style={{ margin: 0, fontSize: 34 }}>Dukaan banao</h1>
+          <Help hi="Naam aur pata bharo, rang aur dukaandaar chuno. Daayein phone mein dikhta hai ki grahak ko kya dikhega. Baad mein Settings mein sab badal sakte ho." en="Fill in the name and address, pick colours and a keeper. The phone on the right shows what customers will see. You can change all of it later in Settings." />
+        </div>
         <label className="field">Dukaan ka naam<input required value={s.name} onChange={(e) => { const v = e.target.value; setS({ ...s, name: v, slug: slugOf(v), initial: s.initial || v.slice(0, 1).toUpperCase() }); checkSlug(slugOf(v)); }} /></label>
         <label className="field">Hindi mein naam (zaroori nahi)<input value={s.name_local} onChange={(e) => setS({ ...s, name_local: e.target.value })} /></label>
         <label className="field">Pata<input required value={s.address} onChange={(e) => setS({ ...s, address: e.target.value })} /></label>

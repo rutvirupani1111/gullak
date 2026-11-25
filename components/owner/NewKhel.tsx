@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { Label } from "@/components/art";
 import { TEMPLATES } from "@/lib/templates";
-import { api } from "./Small";
+import { api, Help } from "./Small";
 import { GameProp } from "./GameProp";
 
 const GAMES = [
@@ -34,9 +34,10 @@ export default function NewKhel({ shop, last }: { shop: { id: string; slug: stri
   return (
     <main className="wrap" style={{ padding: "24px 16px 80px" }}>
       <h1 className="f-display" style={{ margin: "0 0 4px", fontSize: 34 }}>Naya khel</h1>
-      <p style={{ margin: "0 0 18px" }}>Ek dibba chuno. Naam aur inaam ke idea bhar jaayenge. Odds aur stock aap tarazu par khud tay karoge. Khel tab tak kaccha rahega.</p>
+      <Help hi="3 kadam: (1) tyohaar ka dibba chuno, naam aur inaam ke idea apne aap bhar jaayenge; (2) khel chuno; (3) neeche 'Khel banao' dabao. Uske baad inaam aur odds aap khud set karoge. Jab tak 'Chalu karo' nahi dabate, khel kaccha (draft) rahega." en="Three steps: pick a festival box (name and prize ideas fill in), pick a game, press 'Khel banao'. You set prizes and odds next. It stays a draft until you press 'Chalu karo' (start)." />
+      <div style={{ height: 18 }} />
 
-      <h2 className="f-serif" style={{ fontSize: 22, margin: "0 0 10px" }}>Tyohaar ki shelf</h2>
+      <h2 className="f-serif" style={{ fontSize: 22, margin: "0 0 10px" }}>1. Tyohaar ka dibba <span style={{ fontSize: 15, fontWeight: 500 }}>Festival template</span></h2>
       <div role="radiogroup" aria-label="Template" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(46%, 170px), 1fr))", gap: 16, paddingBottom: 14, borderBottom: "14px solid #7A4A26", boxShadow: "0 8px 0 var(--ink)" }}>
         {TEMPLATES.map((x, i) => (
           <button key={x.key} role="radio" aria-checked={tpl === x.key} onClick={() => { setTpl(x.key); setGame(x.game); setName(x.name); }}
@@ -50,7 +51,7 @@ export default function NewKhel({ shop, last }: { shop: { id: string; slug: stri
         ))}
       </div>
 
-      <h2 className="f-serif" style={{ fontSize: 22, margin: "30px 0 10px" }}>Khel ki gaadi</h2>
+      <h2 className="f-serif" style={{ fontSize: 22, margin: "30px 0 10px" }}>2. Kaunsa khel <span style={{ fontSize: 15, fontWeight: 500 }}>Which game</span></h2>
       <div role="radiogroup" aria-label="Game" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 200px), 1fr))", gap: 14 }}>
         {GAMES.map(([g, l, s]) => (
           <button key={g} role="radio" aria-checked={game === g} onClick={() => setGame(g)} className="kraftp"
@@ -62,7 +63,7 @@ export default function NewKhel({ shop, last }: { shop: { id: string; slug: stri
       </div>
 
       <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "end", marginTop: 26 }}>
-        <label className="field" style={{ flex: "1 1 240px" }}>Khel ka naam<input value={name} onChange={(e) => setName(e.target.value)} minLength={2} maxLength={60} /></label>
+        <label className="field" style={{ flex: "1 1 240px" }}>3. Khel ka naam<input value={name} onChange={(e) => setName(e.target.value)} minLength={2} maxLength={60} /></label>
         <button className="plate red" disabled={busy || name.trim().length < 2} onClick={() => create({ name: name.trim(), template: tpl, game })}>{busy ? "..." : "Khel banao, tarazu par chalo"}</button>
       </div>
       {last && (

@@ -20,7 +20,11 @@ export default function Wallet({ initial }: { initial: WalletCoupon[] }) {
   const [offline, setOffline] = useState(false);
   const [sheet, setSheet] = useState<string | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
+  const [forgetAsk, setForgetAsk] = useState(false);
   useEffect(() => {
+    // the gullak spills on its own the first time, so a new visitor sees what is inside without guessing
+    const anyLive = initial.some((c) => c.status === "issued" && new Date(c.expiresAt).getTime() > Date.now());
+    const sp = anyLive ? setTimeout(() => setSpilled(true), 650) : null;
     const i = setInterval(() => setNow(Date.now()), 30000);
     if (!initial.length) {
       try {
@@ -41,7 +45,7 @@ export default function Wallet({ initial }: { initial: WalletCoupon[] }) {
       }
     };
     addEventListener("devicemotion", onMotion);
-    return () => { clearInterval(i); removeEventListener("devicemotion", onMotion); };
+    return () => { clearInterval(i); if (sp) clearTimeout(sp); removeEventListener("devicemotion", onMotion); };
   }, [initial]);
 
   const live = coupons.filter((c) => c.status === "issued" && new Date(c.expiresAt).getTime() > now);
@@ -59,6 +63,7 @@ export default function Wallet({ initial }: { initial: WalletCoupon[] }) {
             <GullakArt size={170} />
           </button>
           <p style={{ fontWeight: 700, margin: 0 }}>{live.length} coupon andar · <button className="plate small" onClick={() => setSpilled((s) => !s)}>{spilled ? "Wapas daalo" : "Hilao"}</button></p>
+          {spilled && live.length > 0 && <p style={{ margin: "10px 0 0", textAlign: "center", fontSize: 14 }}>Coupon ko chhuo: palatkar code aur mohar dikhegi. Phir <b>Counter par dikhao</b> dabao.<br /><span style={{ opacity: 0.75 }}>Tap a coupon to flip it, then press Counter par dikhao.</span></p>}
         </div>
         {coupons.length === 0 && (
           <div className="paper" style={{ padding: 18, maxWidth: 420, margin: "24px auto", textAlign: "center" }}>
@@ -73,7 +78,7 @@ export default function Wallet({ initial }: { initial: WalletCoupon[] }) {
               const soon = new Date(c.expiresAt).getTime() - now < 86400000 && c.status === "issued";
               const isLive = live.includes(c);
               return (
-                <div key={c.id} style={{ perspective: 900, aspectRatio: "260 / 300", animation: `rise .45s var(--spring-soft) ${i * 50}ms both` }}>
+                <div key={c.id} style={{ perspective: 900, aspectRatio: "260 / 300", maxWidth: 320, width: "100%", justifySelf: "center", ["--r" as string]: `${((i % 3) - 1) * 9}deg`, animation: `spillOut .55s var(--spring-soft) ${i * 70}ms both` }}>
                   <button onClick={() => setFlip(flip === c.id ? null : c.id)} aria-label={`${c.label_hi}, palat kar dekho`}
                     style={{ position: "relative", width: "100%", height: "100%", border: 0, padding: 0, background: "none", transformStyle: "preserve-3d", transition: "transform 400ms var(--spring-snap)", transform: flip === c.id ? "rotateY(180deg)" : "none", opacity: isLive ? 1 : 0.6, cursor: "pointer" }}>
                     <div className="paper" style={{ position: "absolute", inset: 0, backfaceVisibility: "hidden", padding: 8, display: "grid", gridTemplateRows: "1fr auto" }}>
@@ -88,7 +93,7 @@ export default function Wallet({ initial }: { initial: WalletCoupon[] }) {
                     <div className="paper" style={{ position: "absolute", inset: 0, backfaceVisibility: "hidden", transform: "rotateY(180deg)", padding: 12, display: "grid", justifyItems: "center", alignContent: "center", gap: 6 }}>
                       <b>{c.label_en}</b>
                       <span className="f-mono" style={{ fontSize: 30, fontWeight: 700, letterSpacing: 2 }}>{formatCode(c.code)}</span>
-                      <div style={{ width: 80, height: 80 }} dangerouslySetInnerHTML={{ __html: c.mohar }} />
+                      <div className="mohar" style={{ width: 80, height: 80 }} dangerouslySetInnerHTML={{ __html: c.mohar }} />
                       <span style={{ fontSize: 13 }}>{isLive ? `Bacha: ${left(c.expiresAt, now)}` : c.status === "redeemed" ? "Counter par diya gaya" : "Khatam"}</span>
                       {isLive && <a className="plate red small" href={`/w/${c.id}`} onClick={(e) => e.stopPropagation()}>Counter par dikhao</a>}
                     </div>
@@ -103,11 +108,24 @@ export default function Wallet({ initial }: { initial: WalletCoupon[] }) {
             {shops.map((s) => (
               <button key={s.slug} className="plate small ghost" onClick={() => setSheet(s.slug)}>{s.name}: agli baar yaad dilaayein?</button>
             ))}
-            <button className="plate small ghost" onClick={async () => {
-              const r = await fetch("/api/v1/wallet/forget", { method: "POST", headers: { "content-type": "application/json" }, body: "{}" });
-              const d = await r.json();
-              setMsg(d.removed ? `Hata diya. ${d.removed} dukaan se aapka number mita diya gaya.` : "Aapka koi number save nahi tha. Kuch hataane ko nahi.");
-            }}>Mera data hatao</button>
+            {!forgetAsk ? (
+              <button className="plate small ghost" onClick={() => setForgetAsk(true)}>Mera data hatao</button>
+            ) : (
+              <span className="paper" role="group" aria-label="Pakka?" style={{ display: "inline-flex", gap: 8, alignItems: "center", padding: "6px 10px", flexWrap: "wrap" }}>
+                <span style={{ fontSize: 14 }}>Har dukaan se aapka number mit jayega. Coupon rahenge.</span>
+                <button className="plate small red" onClick={async () => {
+                  setForgetAsk(false);
+                  try {
+                    const r = await fetch("/api/v1/wallet/forget", { method: "POST", headers: { "content-type": "application/json" }, body: "{}" });
+                    const d = await r.json();
+                    setMsg(d.removed ? `Hata diya. ${d.removed} dukaan se aapka number mita diya gaya.` : "Aapka koi number save nahi tha. Kuch hataane ko nahi.");
+                  } catch {
+                    setMsg("Network nahi mila. Kuch nahi hata. Dobara try karo.");
+                  }
+                }}>Haan, hatao</button>
+                <button className="plate small ghost" onClick={() => setForgetAsk(false)}>Rehne do</button>
+              </span>
+            )}
           </div>
         )}
         {msg && <p className="paper" role="status" style={{ padding: 12, maxWidth: 480, margin: "14px auto" }}>{msg}</p>}

@@ -40,6 +40,10 @@ const T = {
   gift: { hi: "दोस्त को भेजो", hinglish: "Dost ko bhejo", en: "Send one to a friend" },
   giftNote: { hi: "दोस्त को एक खेल मिलेगा, पर सिर्फ़ इसी दुकान पर।", hinglish: "Dost ko ek khel milega, par sirf isi dukaan par.", en: "Your friend gets one game, only at this shop." },
   bulbsOff: { hi: "दुकान अभी बंद है", hinglish: "Dukaan abhi band hai", en: "The shop is shut for now" },
+  show: { hi: "काउंटर पर दिखाओ", hinglish: "Counter par dikhao", en: "Show at the counter" },
+  step1: { hi: "बिल देते समय यह कूपन काउंटर पर दिखाओ।", hinglish: "Bill dete waqt yeh coupon counter par dikhao.", en: "Show this coupon at the counter when you pay." },
+  step2: { hi: "स्टाफ ठप्पा लगाएगा, इनाम आपका।", hinglish: "Staff thappa lagayega, inaam aapka.", en: "Staff stamp it, and the prize is yours." },
+  howto: { hi: "1. डिब्बा खोलो  2. खेलो  3. जीता कूपन काउंटर पर दिखाओ", hinglish: "1. Dibba kholo  2. Khelo  3. Jeeta coupon counter par dikhao", en: "1. Open the box  2. Play  3. Show the coupon you win at the counter" },
 };
 
 async function solvePow(nonce: string, bits: number, signal: { stop: boolean }): Promise<string> {
@@ -307,7 +311,7 @@ export default function CustomerApp({ shop, query }: { shop: Shop; query: { lqt?
   const opening = box === "opening";
 
   return (
-    <main className={dusk ? "dusk" : ""} style={{ minHeight: "100dvh", background: dusk ? "#2A1A12" : "var(--bg)" }}>
+    <main className={dusk ? "dusk" : ""} style={{ minHeight: "100dvh", background: dusk ? "#2A1A12" : "var(--bg)", color: dusk ? "#F5E9CF" : "var(--fg)" }}>
       {shop.is_demo && (
         <div className="demo-ribbon"><div>Demo dukaan: yeh asli dukaan nahi hai</div></div>
       )}
@@ -390,8 +394,15 @@ export default function CustomerApp({ shop, query }: { shop: Shop; query: { lqt?
                   </>
                 )}
                 {verified === null && <p style={{ fontSize: 13 }}>{t("unverified")}</p>}
+                {result.couponId && (
+                  <ol className="next-steps" style={{ textAlign: "left", margin: "4px auto 14px", maxWidth: 320, paddingLeft: 22, fontSize: 15 }}>
+                    <li>{t("step1")}</li>
+                    <li>{t("step2")}</li>
+                  </ol>
+                )}
                 <div style={{ display: "flex", gap: 10, flexWrap: "wrap", justifyContent: "center" }}>
-                  <a className="plate" href="/w">{t("wallet")}</a>
+                  {result.couponId && <a className="plate red" href={`/w/${result.couponId}`}>{t("show")}</a>}
+                  <a className={"plate" + (result.couponId ? " ghost" : "")} href="/w">{t("wallet")}</a>
                   <button className="plate ghost" onClick={sendGift}>{t("gift")}</button>
                 </div>
                 {giftMsg && <p role="status" style={{ fontSize: 14, margin: "10px 0 0" }}>{giftMsg}</p>}
@@ -441,7 +452,8 @@ export default function CustomerApp({ shop, query }: { shop: Shop; query: { lqt?
               </div>
             </div>
             <p style={{ margin: "16px 0 4px", fontWeight: 600, color: dusk ? "#E2CDA2" : "var(--ink)" }}>{shop.address}, {shop.city}</p>
-            <p style={{ margin: "0 0 16px", fontSize: 14, color: dusk ? "#E2CDA2" : "var(--ink)" }}>{t("noDl")}</p>
+            <p style={{ margin: "0 0 6px", fontSize: 14, color: dusk ? "#E2CDA2" : "var(--ink)" }}>{t("noDl")}</p>
+            <p className="f-chalk" style={{ margin: "0 0 16px", fontSize: 17, color: dusk ? "#FFE6A0" : "var(--clay-deep)" }}>{t("howto")}</p>
             <button ref={btn} className="plate red" style={{ fontSize: 22, minHeight: 58, minWidth: 200 }} onClick={(e) => { e.stopPropagation(); open(); }}>
               <span className="f-display">{t("open")}</span>
             </button>

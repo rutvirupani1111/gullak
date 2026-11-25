@@ -11,6 +11,8 @@ export default async function Page({ params }: { params: Promise<{ shop: string 
   return (
     <main className="wrap" style={{ padding: "20px 16px 60px" }}>
       <h1 className="f-display" style={{ fontSize: 34, margin: "0 0 4px" }}>Chowkidar ka register</h1>
+      <p className="help" style={{ marginBottom: 12 }}>Do khaate: baayein, jo galat khel Gullak ne roke; daayein, har thappa kisne aur kab lagaya. Yahan kuch karna nahi hai, sirf dekhna hai.
+        <small>Two ledgers: games Gullak blocked, and every stamp with who and when. Nothing to do here, only to check.</small></p>
       <p className="paper" style={{ padding: 12, maxWidth: 640 }}>Incognito aur naye phone se kuch log 2 baar khel sakte hain (lagbhag 5 se 10 pratishat). Isliye bade inaam ke liye Live QR on rakhein.</p>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 20, marginTop: 16 }}>
         <section className="paper" style={{ padding: 0, backgroundImage: "repeating-linear-gradient(#F5E9CF 0 31px, #b8c6d6 31px 32px)" }}>

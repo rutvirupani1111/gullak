@@ -2,7 +2,7 @@
 import { useRef, useState } from "react";
 import { Keeper, Label } from "@/components/art";
 import { PALETTES, pal } from "@/lib/art";
-import { api } from "./Small";
+import { api, Help } from "./Small";
 
 type Shop = { id: string; slug: string; name: string; name_local: string | null; address: string; city: string; language: string; palette: string; initial: string; keeper: { face: string; head: string; stache: string; specs: boolean; prop: string }; is_demo: boolean };
 type Key = { kv: number; created_at: string; retired_at: string | null };
@@ -47,7 +47,10 @@ export default function Settings({ d }: { d: { shop: Shop; keys: Key[] } }) {
   return (
     <main className="wrap" style={{ padding: "24px 16px 90px", display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 330px), 1fr))", gap: 28, alignItems: "start" }}>
       <section style={{ display: "grid", gap: 18 }}>
-        <h1 className="f-display" style={{ margin: 0, fontSize: 34 }}>Dukaan ki settings</h1>
+        <div>
+          <h1 className="f-display" style={{ margin: 0, fontSize: 34 }}>Dukaan ki settings</h1>
+          <Help hi="Naam, pata, rang aur dukaandaar yahan badlo. Grahak ko kya dikhega, woh phone wale namoone mein turant dikhta hai." en="Change your shop's name, address, colours and keeper here. The phone preview shows what customers will see." />
+        </div>
         <form className="kraftp" style={{ padding: 16, display: "grid", gap: 12, boxShadow: "4px 5px 0 var(--ink)" }} onSubmit={(e) => {
           e.preventDefault();
           const f = new FormData(e.currentTarget);

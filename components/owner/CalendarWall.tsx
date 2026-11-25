@@ -1,8 +1,9 @@
 "use client";
 // O5: a Sivakasi tear-off wall calendar. Every number on the sheet, the day page, the Hisaab table and
 // the CSV comes from the same stats() response, so they cannot disagree.
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { rupees } from "@/lib/art";
+import { Help } from "./Small";
 
 type Day = { day: string; scans: number; opens: number; plays: number; wins: number; redemptions: number; paise: number; byHour: number[] };
 type S = { from: string; to: string; days: Day[]; totals: Omit<Day, "day" | "byHour">; repeatVisitors: number; visitors: number; newVsOld: { day: string; fresh: number; old: number }[] };
@@ -23,6 +24,9 @@ export default function CalendarWall({ shopId, slug, today, d: initial, campaign
   const [table, setTable] = useState(false);
   const byDay = new Map(d.days.map((x) => [x.day, x]));
   const peak = Math.max(1, ...d.days.map((x) => x.plays));
+  useEffect(() => {
+    try { localStorage.setItem("gk.hisaab." + slug, "1"); } catch {}
+  }, [slug]);
 
   async function pick(id: string | null) {
     setCamp(id);
@@ -56,7 +60,10 @@ export default function CalendarWall({ shopId, slug, today, d: initial, campaign
   return (
     <main className="wrap" style={{ padding: "18px 16px 80px" }}>
       <div style={{ display: "flex", flexWrap: "wrap", gap: 10, justifyContent: "space-between", alignItems: "end" }}>
-        <h1 className="f-display" style={{ fontSize: "clamp(30px, 7vw, 44px)", margin: 0 }}>Calendar</h1>
+        <div>
+          <h1 className="f-display" style={{ fontSize: "clamp(30px, 7vw, 44px)", margin: 0 }}>Hisaab</h1>
+          <Help hi="Deewar ka calendar: jitni moti bindiyaan, us din utne khel. Kisi din ko chhuo, us din ka poora hisaab khulega." en="A wall calendar: bigger dots mean more games that day. Tap a day to see its full count." />
+        </div>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           <button className={"plate small " + (table ? "" : "ghost")} aria-pressed={table} onClick={() => setTable(!table)}>Hisaab table</button>
           <a className="plate small ghost" href={`/api/v1/shops/${shopId}/stats.csv?from=${d.from}&to=${d.to}${camp ? `&campaign=${camp}` : ""}`} download={`${slug}-hisaab.csv`}>CSV</a>
@@ -74,6 +81,16 @@ export default function CalendarWall({ shopId, slug, today, d: initial, campaign
         ))}
       </div>
 
+      {initial.totals.scans === 0 && initial.totals.plays === 0 && (
+        <div className="paper" style={{ padding: 14, marginTop: 16, display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
+          <div style={{ flex: "1 1 240px" }}>
+            <b className="f-serif" style={{ fontSize: 19 }}>Calendar abhi khaali hai.</b>
+            <p style={{ margin: "4px 0 0" }}>Pehla khel khud khelo: dibba kholo, chakri ghumao, phir yahan wapas aao. Aaj ki taarikh par bindi lag jayegi.</p>
+            <p style={{ margin: "2px 0 0", fontSize: 14, opacity: 0.75 }}>Nothing yet. Play your own game once, come back, and today gets its first dot.</p>
+          </div>
+          <a className="plate red" href={`/s/${slug}`}>Pehla khel khelo</a>
+        </div>
+      )}
       {table ? (
         <Hisaab d={d} />
       ) : (

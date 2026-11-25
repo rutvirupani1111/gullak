@@ -4,6 +4,7 @@
 // owner drops in stays inside this canvas and is never uploaded.
 import { useCallback, useEffect, useRef, useState } from "react";
 import { pal } from "@/lib/art";
+import { Help } from "./Small";
 
 type Shop = { slug: string; name: string; name_local: string | null; address: string; city: string; palette: string; initial: string };
 type Tpl = { id: string; label: string; w: number; h: number; pt: [number, number]; tent?: boolean; fixed?: boolean };
@@ -213,6 +214,10 @@ export default function PosterBench({ shop, qr, url }: { shop: Shop; qr: string;
     if (canvas.current) paint(canvas.current, 0.5).catch(() => {});
   }, [paint]);
 
+  /** Ticks "QR poster print karo" on the owner's home on this phone. */
+  function markDone() {
+    try { localStorage.setItem("gk.poster." + shop.slug, "1"); } catch {}
+  }
   async function render() {
     const c = document.createElement("canvas");
     const lowMem = ((navigator as unknown as { deviceMemory?: number }).deviceMemory ?? 8) <= 2;
@@ -236,6 +241,7 @@ export default function PosterBench({ shop, qr, url }: { shop: Shop; qr: string;
     const blob: Blob = await new Promise((r) => c.toBlob((b) => r(b!), "image/png"));
     const file = new File([blob], `${shop.slug}-${tpl.id}.png`, { type: "image/png" });
     setBusy(null);
+    markDone();
     if (share && navigator.canShare?.({ files: [file] })) {
       try { await navigator.share({ files: [file], title: shop.name }); return; } catch { /* fall through to download */ }
     }
@@ -252,6 +258,7 @@ export default function PosterBench({ shop, qr, url }: { shop: Shop; qr: string;
     const page = doc.addPage(tpl.pt);
     page.drawImage(img, { x: 0, y: 0, width: tpl.pt[0], height: tpl.pt[1] });
     const bytes = await doc.save();
+    markDone();
     const a = document.createElement("a");
     a.href = URL.createObjectURL(new Blob([bytes as BlobPart], { type: "application/pdf" })); a.download = `${shop.slug}-${tpl.id}.pdf`; a.click();
     setBusy(null);
@@ -262,14 +269,18 @@ export default function PosterBench({ shop, qr, url }: { shop: Shop; qr: string;
     <main style={{ background: "linear-gradient(#5b3519, #4a2a13)", minHeight: "calc(100dvh - 52px)" }}>
       <div className="wrap" style={{ padding: "18px 16px 60px", display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 320px), 1fr))", gap: 22, alignItems: "start" }}>
         <section style={{ color: "var(--newsprint)", display: "grid", gap: 14 }}>
-          <h1 className="f-display" style={{ fontSize: "clamp(30px, 7vw, 44px)", margin: 0, color: "var(--haldi)" }}>Painter ka bench</h1>
-          <Group label="Kaagaz">
+          <div>
+            <h1 className="f-display" style={{ fontSize: "clamp(30px, 7vw, 44px)", margin: 0, color: "var(--haldi)" }}>Poster</h1>
+            <p className="f-serif" style={{ margin: "2px 0 0", fontWeight: 700 }}>Painter ka bench</p>
+            <Help hi="Is poster ka QR grahak scan karte hain. Kaagaz aur bhaasha chuno, PDF lo, print karke counter ke paas chipkao." en="Customers scan this poster's QR. Pick a paper size and language, download the PDF, print it and stick it near your counter." />
+          </div>
+          <Group label="1. Kaagaz">
             {TPL.map((t) => <button key={t.id} className={"plate small " + (tpl.id === t.id ? "" : "ghost")} aria-pressed={tpl.id === t.id} onClick={() => setTpl(t)}>{t.label}</button>)}
           </Group>
-          <Group label="Bhaasha">
+          <Group label="2. Bhaasha">
             {Object.entries(COPY).map(([k, v]) => <button key={k} className={"plate small " + (lang === k ? "" : "ghost")} aria-pressed={lang === k} onClick={() => setLang(k)}>{v.name}</button>)}
           </Group>
-          <Group label="Tasveer">
+          <Group label="3. Tasveer">
             {STALLS.map(([k, l]) => <button key={k} className={"plate small " + (!photo && stall === k ? "" : "ghost")} aria-pressed={!photo && stall === k} onClick={() => { setPhoto(null); setStall(k); }}>{l}</button>)}
             <label className={"plate small " + (photo ? "" : "ghost")} style={{ cursor: "pointer" }}>
               Apni photo
@@ -277,6 +288,7 @@ export default function PosterBench({ shop, qr, url }: { shop: Shop; qr: string;
             </label>
           </Group>
           <p style={{ fontSize: 13, margin: 0 }}>Photo sirf is phone ke andar rehti hai. Kahin upload nahi hoti.</p>
+          <p className="f-serif" style={{ fontWeight: 700, margin: 0 }}>4. Lo aur print karo</p>
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
             <button className="plate red" disabled={!!busy} onClick={() => pdf()}>{busy === "pdf" ? "Ban raha hai..." : "PDF lo"}</button>
             <button className="plate" disabled={!!busy} onClick={() => png()}>{busy === "png" ? "Ban raha hai..." : "PNG lo"}</button>

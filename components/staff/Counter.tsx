@@ -42,11 +42,13 @@ export default function Counter() {
     return (
       <main style={{ minHeight: "100dvh", background: "#5b3519 repeating-linear-gradient(90deg, rgba(0,0,0,.08) 0 2px, transparent 2px 40px)", display: "grid", placeItems: "center", padding: 16 }}>
         <div style={{ width: "min(360px, 100%)" }}>
-          <h1 className="f-display truck" style={{ color: "var(--haldi)", fontSize: 38, textAlign: "center", margin: "0 0 10px" }}>Counter</h1>
-          <label className="field" style={{ color: "#F5E9CF" }}>Dukaan ka web naam
+          <h1 className="f-display truck" style={{ color: "var(--haldi)", fontSize: 38, textAlign: "center", margin: "0 0 6px" }}>Counter</h1>
+          <p style={{ color: "#F5E9CF", textAlign: "center", margin: "0 0 14px", lineHeight: 1.4 }}>Dukaan ke staff ke liye: grahak ka jeeta coupon yahan stamp hota hai.<br /><span style={{ fontSize: 14, color: "#E2CDA2" }}>For shop staff: this is where a customer&apos;s coupon gets stamped.</span></p>
+          <label className="field" style={{ color: "#F5E9CF" }}>1. Dukaan ka web naam
             <input value={slug} onChange={(e) => setSlug(e.target.value)} placeholder="sharma-ji-ki-tapri" autoCapitalize="none" />
           </label>
-          <div style={{ display: "flex", justifyContent: "center", gap: 12, margin: "18px 0" }}>
+          <p style={{ color: "#F5E9CF", fontWeight: 600, margin: "16px 0 0" }}>2. Apna 4 ank ka PIN dabao</p>
+          <div style={{ display: "flex", justifyContent: "center", gap: 12, margin: "12px 0 18px" }}>
             {[0, 1, 2, 3].map((i) => <span key={i} style={{ width: 18, height: 18, borderRadius: 9, border: "2px solid #F4B400", background: i < pin.length ? "#F4B400" : "transparent" }} />)}
           </div>
           <div key={shake} style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10, padding: 14, background: "linear-gradient(#C9A13B, #9C7A22)", border: "3px solid var(--ink)", boxShadow: "6px 7px 0 var(--ink)", animation: shake ? "shake3 .3s" : undefined }}>
@@ -183,6 +185,10 @@ function Thappa({ me, setCount, logout }: { me: { name: string; shop: { slug: st
       <div style={{ maxWidth: 520, margin: "18px auto 0" }}>
         {!look && (
           <div className="rise">
+            <p style={{ color: "#F5E9CF", textAlign: "center", margin: "0 0 12px", lineHeight: 1.4 }}>
+              <b style={{ fontSize: 18 }}>Grahak ke phone par 7 akshar ka code daalo, ya QR scan karo.</b><br />
+              <span style={{ fontSize: 14, color: "#E2CDA2" }}>Type the 7-letter code from the customer&apos;s phone, or scan their QR.</span>
+            </p>
             <div style={{ display: "flex", gap: 6, justifyContent: "center" }}>
               {boxes.map((b, i) => (
                 <input key={i} ref={(el) => { refs.current[i] = el; }} value={b} aria-label={`Code akshar ${i + 1}`} maxLength={2} autoCapitalize="characters" autoComplete="off" autoFocus={i === 0}
@@ -238,19 +244,25 @@ function Thappa({ me, setCount, logout }: { me: { name: string; shop: { slug: st
                 <p style={{ color: "#F5E9CF", fontWeight: 700 }}>Dabaye rakho: thappa</p>
               </div>
             )}
-            {stamped?.id && (
-              <div className="tin" style={{ position: "fixed", left: 16, right: 16, bottom: 16, padding: 12, display: "flex", gap: 10, alignItems: "center", justifyContent: "space-between", maxWidth: 520, margin: "0 auto", animation: "rise .3s var(--spring-soft)" }}>
-                <span style={{ fontWeight: 700 }}>Galti se lagaya?</span>
-                <button className="plate red small" onClick={undo}>Wapas lo</button>
-              </div>
-            )}
             <div style={{ display: "flex", justifyContent: "center", marginTop: 18 }}>
               <button className="plate" onClick={reset}>Agla coupon</button>
             </div>
           </div>
         )}
+        {/* outside the rising slip: a transformed parent would pin this bar to the slip instead of the screen */}
+        {stamped?.id && <UndoBar key={stamped.id} onUndo={undo} />}
       </div>
     </main>
+  );
+}
+/** "Galti se lagaya?" for 10 seconds, with a tin strip that drains so staff can see the window closing. */
+function UndoBar({ onUndo }: { onUndo: () => void }) {
+  return (
+    <div className="tin" role="status" style={{ position: "fixed", left: 16, right: 16, bottom: 16, zIndex: 40, padding: "12px 12px 16px", display: "flex", gap: 10, alignItems: "center", justifyContent: "space-between", maxWidth: 520, margin: "0 auto", animation: "rise .3s var(--spring-soft)", overflow: "hidden" }}>
+      <span style={{ fontWeight: 700 }}>Galti se lagaya? <small style={{ fontWeight: 500 }}>Stamped by mistake?</small></span>
+      <button className="plate red small" onClick={onUndo}>Wapas lo</button>
+      <span aria-hidden="true" style={{ position: "absolute", left: 0, bottom: 0, height: 5, width: "100%", background: "var(--press-red)", transformOrigin: "0 50%", animation: "drain 10s linear forwards" }} />
+    </div>
   );
 }
 function Slip({ children, tone, torn }: { children: React.ReactNode; tone: string; torn?: boolean }) {
