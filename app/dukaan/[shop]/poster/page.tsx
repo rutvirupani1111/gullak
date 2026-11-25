@@ -10,5 +10,5 @@ export default async function Page({ params }: { params: Promise<{ shop: string 
   const site = process.env.NEXT_PUBLIC_SITE_URL || `https://${h.get("host")}`;
   const url = `${site}/s/${shop!.slug}?src=poster`;
   const qr = await QRCode.toString(url, { type: "svg", margin: 0, errorCorrectionLevel: "M", color: { dark: "#1C1210", light: "#F5E9CF" } });
-  return <PosterBench shop={JSON.parse(JSON.stringify(shop))} qr={qr} url={url.replace(/^https?:\/\//, "").replace("?src=poster", "")} />;
+  return <PosterBench shop={JSON.parse(JSON.stringify(shop))} qr={qr} qrText={url} url={url.replace(/^https?:\/\//, "").replace("?src=poster", "")} />;
 }

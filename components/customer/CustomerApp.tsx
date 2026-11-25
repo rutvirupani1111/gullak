@@ -92,6 +92,8 @@ export default function CustomerApp({ shop, query }: { shop: Shop; query: { lqt?
   // lite mode: a slow phone keeps every result and every word, and drops the particles and half the bulbs
   const [lite, setLite] = useState(false);
   const opened = useRef(!!query.khula);
+  const shutRef = useRef(false);
+  const [shut, setShut] = useState<string | null>(null);
   const btn = useRef<HTMLButtonElement>(null);
   const gullakRef = useRef<HTMLButtonElement>(null);
   const powSig = useRef({ stop: false });
@@ -133,6 +135,11 @@ export default function CustomerApp({ shop, query }: { shop: Shop; query: { lqt?
       const d: Ready = await r.json();
       setNetErr(false);
       setReady(d);
+      if (!d.eligible && (d.reason === "closed_hours" || d.reason === "ended" || d.reason === "paused") && !shutRef.current) {
+        shutRef.current = true;
+        setShut(d.reason);
+        setBox((b) => (b === "open" ? "open" : "closed"));
+      }
       if (d.visitN >= 2) try { localStorage.setItem("gk.seen." + shop.slug, "1"); } catch {}
       if (d.challenge) {
         powSig.current = { stop: false };
@@ -161,7 +168,7 @@ export default function CustomerApp({ shop, query }: { shop: Shop; query: { lqt?
     try { navigator.vibrate?.(30); } catch {}
     sparks();
     const dur = calm ? 250 : repeat ? 400 : 1400;
-    setTimeout(() => setBox("open"), dur);
+    setTimeout(() => { if (!shutRef.current) setBox("open"); }, dur);
   }, [calm, repeat, loadReady]);
 
   // any input opens the box, and the page never traps scrolling once it is open
@@ -263,6 +270,13 @@ export default function CustomerApp({ shop, query }: { shop: Shop; query: { lqt?
           if (!r.ok) {
             setErr(msg(d));
             sessionStorage.removeItem("gk.idem." + ready.campaign!.id);
+            if (d.error === "geofence") {
+              // back to the counter with a fresh challenge, so the next Khelo asks for the location again
+              geoRef.current = undefined;
+              setPow(null);
+              setPhase("counter");
+              loadReady();
+            }
             return null;
           }
           if (d.payload && d.sig) {
@@ -374,7 +388,7 @@ export default function CustomerApp({ shop, query }: { shop: Shop; query: { lqt?
       {/* C2: inside the tray. The counter, the chalkboard and the dukaandaar. */}
       <section className="wrap" style={{ paddingBottom: 120 }}>
         <div style={{ position: "relative", maxWidth: 520, margin: "0 auto" }}>
-          <Bulbs n={lite ? 6 : 12} lit={box !== "closed" && !!ready && ready.reason !== "closed_hours"} stagger={lite ? 120 : 60} />
+          <Bulbs n={lite ? 6 : 12} lit={box !== "closed" && !!ready && !shut} stagger={lite ? 120 : 60} />
           <h1 className="f-display truck" style={{ fontSize: "clamp(30px, 9vw, 46px)", lineHeight: 1, margin: "6px 0 2px", color: p.a, ["--sh" as string]: p.b, textAlign: "center" }}>
             {lang === "hi" && shop.name_local ? shop.name_local : shop.name}
           </h1>
@@ -385,6 +399,7 @@ export default function CustomerApp({ shop, query }: { shop: Shop; query: { lqt?
           <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) clamp(96px, 30vw, 128px)", gap: 10, alignItems: "end", marginTop: 14 }}>
             <div className="chalkboard" style={{ padding: "12px 14px", minHeight: 210, animation: box === "open" ? "rise .5s var(--spring-soft) both" : undefined }}>
               <div className="f-chalk" style={{ fontSize: 22, borderBottom: "1px dashed rgba(237,230,211,.5)", marginBottom: 6 }}>{t("prizes")}</div>
+              {ready && ready.prizes.length === 0 && <p className="f-chalk" style={{ fontSize: 19, opacity: 0.85, margin: "10px 0" }}>{lang === "en" ? "No game on the board today." : "Aaj board par koi khel nahi."}</p>}
               {!ready && Array.from({ length: 4 }, (_, i) => <div key={i} className="skel" style={{ height: 18, margin: "10px 0", width: `${80 - i * 12}%`, background: "rgba(237,230,211,.18)" }} />)}
               {ready?.prizes.map((pz, i) => (
                 <div key={pz.id} className="f-chalk" style={{ padding: "4px 0", opacity: pz.remaining === 0 ? 0.4 : 1, animation: box === "open" ? `rise .4s var(--spring-soft) ${120 + i * 70}ms both` : undefined }}>
@@ -503,6 +518,11 @@ export default function CustomerApp({ shop, query }: { shop: Shop; query: { lqt?
               <div style={{ position: "absolute", inset: 0, transformOrigin: "50% 100%", border: "3px solid var(--ink)", background: dusk ? "#6E2C17" : p.b, boxShadow: "6px 7px 0 var(--ink)",
                 transform: opening && !calm ? "rotateX(18deg) translateY(30%) scale(.96)" : "none", transition: "transform 900ms var(--ease-hero)" }}>
                 <Label palette={shop.palette} initial={shop.initial} seed={shop.slug} title={shop.initial} style={{ position: "absolute", inset: "9% 7% 9% 13%" }} />
+                {shut && (
+                  <div className="tag-tie" style={{ position: "absolute", right: "-4%", top: "18%", width: "52%", transformOrigin: "50% 0" }}>
+                    <HangTag text={shut === "closed_hours" ? (glang === "hi" ? `Aaj ${minuteLabel(c?.open_minute ?? 0)} se` : `Opens ${minuteLabel(c?.open_minute ?? 0)}`) : glang === "hi" ? "Agla khel jald" : "Next game soon"} />
+                  </div>
+                )}
                 {/* striker strip */}
                 <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: "7%", background: "repeating-linear-gradient(0deg,#6E2C17 0 3px,#3a1a0c 3px 6px)", borderRight: "2px solid var(--ink)" }} />
                 <canvas ref={canvasRef} width={120} height={40} style={{ position: "absolute", left: "2%", top: "40%", width: 120, height: 40, pointerEvents: "none" }} />
@@ -510,16 +530,26 @@ export default function CustomerApp({ shop, query }: { shop: Shop; query: { lqt?
             </div>
             <p style={{ margin: "16px 0 4px", fontWeight: 600, color: dusk ? "#E2CDA2" : "var(--ink)" }}>{shop.address}, {shop.city}</p>
             <p style={{ margin: "0 0 6px", fontSize: 14, color: dusk ? "#E2CDA2" : "var(--ink)" }}>{t("noDl")}</p>
-            <p className="f-chalk" style={{ margin: "0 0 16px", fontSize: 17, color: dusk ? "#FFE6A0" : "var(--clay-deep)" }}>{t("howto")}</p>
-            <button ref={btn} className="plate red" style={{ fontSize: 22, minHeight: 58, minWidth: 200 }} onClick={(e) => { e.stopPropagation(); open(); }}>
-              <span className="f-display">{t("open")}</span>
+            {shut ? (
+              <p className="f-chalk" style={{ margin: "0 0 16px", fontSize: 19, color: dusk ? "#FFE6A0" : "var(--clay-deep)" }}>
+                {shut === "closed_hours" ? (glang === "hi" ? "Dibba abhi band hai. Dukaan khulne par aana." : "The box is shut. Come back when the shop opens.") : glang === "hi" ? "Is dukaan ka agla khel abhi shuru nahi hua." : "This shop's next game has not started yet."}
+              </p>
+            ) : (
+              <p className="f-chalk" style={{ margin: "0 0 16px", fontSize: 17, color: dusk ? "#FFE6A0" : "var(--clay-deep)" }}>{t("howto")}</p>
+            )}
+            <button ref={btn} className={"plate " + (shut ? "ghost" : "red")} style={{ fontSize: 22, minHeight: 58, minWidth: 200 }} onClick={(e) => { e.stopPropagation(); open(); }}>
+              <span className="f-display">{shut ? (glang === "hi" ? "Andar jhaanko" : "Peek inside") : t("open")}</span>
             </button>
+            {shut && <p style={{ margin: "12px 0 0" }}><a href="/w" onClick={(e) => e.stopPropagation()} style={{ fontWeight: 700, color: dusk ? "#E2CDA2" : "var(--ink)", padding: "12px 6px", display: "inline-block" }}>{t("wallet")}</a></p>}
           </div>
         </div>
       )}
       <style>{`
         .keeper-in .kp-head { animation: ${box === "open" ? "kpLook .8s var(--spring-soft) both" : "none"}; }
         .kp-wave { animation: kpWave 1.1s ease-in-out .2s both; }
+        .tag-tie { animation: tagSwing 1.6s var(--spring-soft) both; }
+        @keyframes tagSwing { 0% { transform: rotate(-14deg) translateY(-30px); opacity: 0 } 30% { opacity: 1 } 55% { transform: rotate(7deg) } 80% { transform: rotate(-3deg) } 100% { transform: rotate(0) } }
+        @media (prefers-reduced-motion: reduce) { .tag-tie { animation: fadein .25s both } }
         @keyframes kpLook { from { transform: rotate(-8deg) } to { transform: rotate(0) } }
         @keyframes kpWave { 0% { transform: rotate(0) } 25% { transform: rotate(-24deg) } 50% { transform: rotate(-6deg) } 75% { transform: rotate(-20deg) } 100% { transform: rotate(0) } }
       `}</style>
@@ -548,17 +578,28 @@ function AlreadyPlayed({ at, t, onGift, giftMsg }: { at: string; t: (k: keyof ty
   );
 }
 
+/** The hand-tied kraft tag of C8. The words sit inside the tag body, clear of the string's eyelet, and shrink to fit. */
+function HangTag({ text }: { text: string }) {
+  const fs = Math.max(14, Math.min(26, Math.floor(118 / Math.max(1, [...text].length * 0.48))));
+  return (
+    <svg viewBox="0 0 220 160" width="100%" role="img" aria-label={text} style={{ display: "block", overflow: "visible" }}>
+      <path d="M182 6 q-26 18 -8 52" stroke="#6E2C17" strokeWidth="2.5" fill="none" strokeDasharray="5 2" />
+      <g transform="rotate(-4 110 104)">
+        <path d="M20 58 h140 l26 46 l-26 46 h-140z" fill="#E2CDA2" stroke="#1C1210" strokeWidth="3" />
+        <path d="M28 66 h128 l21 38 l-21 38 h-128z" fill="none" stroke="#6E2C17" strokeWidth="1.2" strokeDasharray="4 3" opacity=".6" />
+        <circle cx="168" cy="104" r="7" fill="#F5E9CF" stroke="#1C1210" strokeWidth="2.5" />
+        <text x="88" y={104 + fs * 0.34} textAnchor="middle" fontFamily="var(--f-chalk)" fontSize={fs} fill="#1C1210">{text}</text>
+      </g>
+    </svg>
+  );
+}
+
 function ClosedTag({ reason, open, lang }: { reason: string; open: number; lang: "hi" | "en" }) {
   const msg = reason === "closed_hours" ? (lang === "hi" ? `Aaj ${minuteLabel(open)} se` : `Opens at ${minuteLabel(open)}`) : lang === "hi" ? "Agla khel jald" : "Next game soon";
   return (
     <div style={{ display: "grid", placeItems: "center", padding: 20 }}>
-      <svg viewBox="0 0 220 150" width="220" height="150" aria-hidden="true">
-        <path d="M110 4 q-30 20 -10 44" stroke="#6E2C17" strokeWidth="2" fill="none" />
-        <path d="M40 48 h140 l20 50 l-20 50 h-140z" fill="#E2CDA2" stroke="#1C1210" strokeWidth="3" transform="rotate(-4 110 98)" />
-        <circle cx="176" cy="96" r="6" fill="#F5E9CF" stroke="#1C1210" strokeWidth="2" />
-      </svg>
-      <p className="f-chalk" style={{ fontSize: 26, marginTop: -100, transform: "rotate(-4deg)", color: "#1C1210" }}>{msg}</p>
-      <p style={{ marginTop: 50, fontWeight: 600 }}>{lang === "hi" ? "Dibba abhi band hai." : "The box is shut for now."}</p>
+      <div className="tag-tie" style={{ width: 230, transformOrigin: "80% 0" }}><HangTag text={msg} /></div>
+      <p style={{ marginTop: 14, fontWeight: 600 }}>{lang === "hi" ? "Dibba abhi band hai." : "The box is shut for now."}</p>
     </div>
   );
 }

@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
+import { qrReader } from "@/lib/qrscan";
 import { badBox, isValidCode, normalise, formatCode } from "@/lib/code";
 
 type Look = { state: string; coupon?: { id: string; code: string; expiresAt: string }; prize?: { label_hi: string; label_en: string; minBill: number }; mohar?: string; visitN?: number; redeemedAtLabel?: string | null; redeemedBy?: string | null; otherSlug?: string; code?: string };
@@ -174,17 +175,17 @@ function Thappa({ me, setCount, logout }: { me: { name: string; shop: { slug: st
   useEffect(() => {
     if (!scan) return;
     let stream: MediaStream | null = null, stop = false;
-    const BD = (window as unknown as { BarcodeDetector?: new (o: unknown) => { detect: (v: HTMLVideoElement) => Promise<{ rawValue: string }[]> } }).BarcodeDetector;
-    if (!BD) { setMsg("Is phone par camera scan nahi chalta. Code type karo."); setScan(false); return; }
-    const det = new BD({ formats: ["qr_code"] });
+    // BarcodeDetector where the phone has it, else jsQR loaded on demand; about 6 frames a second either way
+    const det = qrReader(480);
+    if (!navigator.mediaDevices?.getUserMedia) { setMsg("Is phone par camera nahi khulta. Code type karo."); setScan(false); return; }
     navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } }).then(async (s) => {
       stream = s;
       if (!video.current) return;
       video.current.srcObject = s;
       await video.current.play();
       while (!stop) {
-        const r = await det.detect(video.current).catch(() => []);
-        if (r[0]) { setScan(false); check("", r[0].rawValue); break; }
+        const raw = video.current ? await det.read(video.current) : null;
+        if (raw) { setScan(false); check("", raw); break; }
         await new Promise((x) => setTimeout(x, 166));
       }
     }).catch(() => { setMsg("Camera nahi khula. Code type karo."); setScan(false); });

@@ -98,17 +98,27 @@ export function labelSvg(opts: { palette: string; initial: string; seed: string;
   const ink = textOn(b);
   const title = (opts.title ?? "").replace(/[<&>]/g, "");
   const words = title || opts.initial;
-  // the panel grows with the words and the lettering shrinks to fit, so a long festival name never runs off the label
-  const len = [...words].length;
-  const fs = Math.max(10, Math.min(22, Math.floor((w - 36) / Math.max(1, len * 0.58))));
-  const pw = Math.min(w - 24, Math.max(100, Math.ceil(len * fs * 0.58) + 22));
-  const ph = Math.max(28, Math.min(40, fs + 18));
+  // the panel grows with the words and the lettering shrinks to fit; a long festival name breaks onto two lines
+  // at the space nearest its middle, so it never runs off the label and never shrinks to a whisper
+  let lines = [words];
+  if ([...words].length > 15 && words.includes(" ")) {
+    const mid = words.length / 2;
+    let cut = -1;
+    for (let i = 0; i < words.length; i++) if (words[i] === " " && (cut < 0 || Math.abs(i - mid) < Math.abs(cut - mid))) cut = i;
+    lines = [words.slice(0, cut), words.slice(cut + 1)];
+  }
+  const longest = Math.max(...lines.map((l) => [...l].length));
+  const fs = Math.max(10, Math.min(lines.length > 1 ? 18 : 22, Math.floor((w - 36) / Math.max(1, longest * 0.58))));
+  const pw = Math.min(w - 24, Math.max(100, Math.ceil(longest * fs * 0.58) + 22));
+  const lh = fs * 1.08;
+  const ph = lines.length > 1 ? Math.min(h - 24, Math.ceil(lh * 2 + 14)) : Math.max(28, Math.min(40, fs + 18));
+  const y0 = h / 2 - ((lines.length - 1) * lh) / 2 + fs * 0.36;
+  const txt = lines.map((l, i) => `<text x="${w / 2 + 1.5}" y="${y0 + i * lh + 1}" text-anchor="middle" font-family="var(--f-display)" font-size="${fs}" fill="#1C1210" opacity=".35">${l}</text><text x="${w / 2}" y="${y0 + i * lh}" text-anchor="middle" font-family="var(--f-display)" font-size="${fs}" fill="${ink}">${l}</text>`).join("");
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}" width="100%" height="100%" aria-hidden="true">
 ${patternSvg(kind, w, h, a, b)}
 <rect x="6" y="6" width="${w - 12}" height="${h - 12}" fill="none" stroke="#1C1210" stroke-width="2.5"/>
 <rect x="${(w - pw) / 2}" y="${h / 2 - ph / 2}" width="${pw}" height="${ph}" fill="${b}" stroke="#1C1210" stroke-width="2.5"/>
-<text x="${w / 2 + 1.5}" y="${h / 2 + fs * 0.36 + 1}" text-anchor="middle" font-family="var(--f-display)" font-size="${fs}" fill="#1C1210" opacity=".35">${words}</text>
-<text x="${w / 2}" y="${h / 2 + fs * 0.36}" text-anchor="middle" font-family="var(--f-display)" font-size="${fs}" fill="${ink}">${words}</text>
+${txt}
 </svg>`;
 }
 

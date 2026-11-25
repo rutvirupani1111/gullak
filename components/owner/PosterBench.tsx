@@ -4,6 +4,7 @@
 // owner drops in stays inside this canvas and is never uploaded.
 import { useCallback, useEffect, useRef, useState } from "react";
 import { pal } from "@/lib/art";
+import { qrReader } from "@/lib/qrscan";
 import { Help } from "./Small";
 
 type Shop = { slug: string; name: string; name_local: string | null; address: string; city: string; palette: string; initial: string };
@@ -113,7 +114,7 @@ function drawStall(g: CanvasRenderingContext2D, kind: string, x: number, y: numb
   g.restore();
 }
 
-export default function PosterBench({ shop, qr, url }: { shop: Shop; qr: string; url: string }) {
+export default function PosterBench({ shop, qr, qrText, url }: { shop: Shop; qr: string; qrText: string; url: string }) {
   const [tpl, setTpl] = useState(TPL[0]);
   const [lang, setLang] = useState("hinglish");
   const [stall, setStall] = useState("tapri");
@@ -121,6 +122,8 @@ export default function PosterBench({ shop, qr, url }: { shop: Shop; qr: string;
   const [busy, setBusy] = useState<string | null>(null);
   const [check, setCheck] = useState<string | null>(null);
   const canvas = useRef<HTMLCanvasElement>(null);
+  // where the QR landed on the last painted canvas, so the PDF can lay crisp vector modules exactly over it
+  const qrBoxes = useRef<{ W: number; boxes: { x: number; y: number; s: number; rot: boolean }[] }>({ W: 1, boxes: [] });
   const p = pal(shop.palette);
 
   const paint = useCallback(async (c: HTMLCanvasElement, scale: number) => {
@@ -132,6 +135,7 @@ export default function PosterBench({ shop, qr, url }: { shop: Shop; qr: string;
     const ph = photo ? await loadImg(photo) : null;
     const display = fam("--f-display", "sans-serif"), body = fam("--f-body", "'Nirmala UI', sans-serif"), mono = fam("--f-mono", "monospace"), serif = fam("--f-serif", "serif");
     const copy = COPY[lang];
+    const boxes: { x: number; y: number; s: number; rot: boolean }[] = [];
     const panel = (pw: number, ph2: number) => {
       const u = pw / 100;
       g.fillStyle = PAPER; g.fillRect(0, 0, pw, ph2);
@@ -171,6 +175,11 @@ export default function PosterBench({ shop, qr, url }: { shop: Shop; qr: string;
       g.imageSmoothingEnabled = false;
       g.drawImage(qrImg, qx, qy, qs, qs);
       g.imageSmoothingEnabled = true;
+      {
+        const m = g.getTransform();
+        const a = m.transformPoint(new DOMPoint(qx, qy)), b = m.transformPoint(new DOMPoint(qx + qs, qy + qs));
+        boxes.push({ x: Math.min(a.x, b.x), y: Math.min(a.y, b.y), s: Math.abs(b.x - a.x), rot: a.x > b.x });
+      }
       // marigold corners
       [[qx - u * 2, qy - u * 2], [qx + qs + u * 2, qy - u * 2], [qx - u * 2, qy + qs + u * 2], [qx + qs + u * 2, qy + qs + u * 2]].forEach(([cx, cy]) => {
         for (let k = 0; k < 8; k++) { g.beginPath(); g.arc(cx + Math.cos(k * 0.785) * u * 1.4, cy + Math.sin(k * 0.785) * u * 1.4, u * 1.1, 0, Math.PI * 2); g.fillStyle = "#FF7A1A"; g.fill(); g.stroke(); }
@@ -208,6 +217,7 @@ export default function PosterBench({ shop, qr, url }: { shop: Shop; qr: string;
       const m = W / 50;
       [[0, 0], [W, 0], [0, H], [W, H]].forEach(([cx, cy]) => { g.beginPath(); g.moveTo(cx, cy + (cy ? -m : m)); g.lineTo(cx, cy); g.lineTo(cx + (cx ? -m : m), cy); g.stroke(); });
     } else panel(W, H);
+    qrBoxes.current = { W, boxes };
   }, [tpl, lang, stall, photo, qr, shop, url, p.a, p.b]);
 
   useEffect(() => {
@@ -224,13 +234,10 @@ export default function PosterBench({ shop, qr, url }: { shop: Shop; qr: string;
     await paint(c, tpl.fixed ? 1 : lowMem ? 1 : 2);
     return c;
   }
-  async function selfTest(c: HTMLCanvasElement) {
-    const BD = (window as unknown as { BarcodeDetector?: new (o: unknown) => { detect: (s: unknown) => Promise<{ rawValue: string }[]> } }).BarcodeDetector;
-    if (!BD) return null;
-    try {
-      const codes = await new BD({ formats: ["qr_code"] }).detect(c);
-      return codes.some((x) => x.rawValue.includes(`/s/${shop.slug}`));
-    } catch { return null; }
+  async function selfTest(c: HTMLCanvasElement): Promise<boolean | null> {
+    // decode the rendered poster exactly as a customer's camera would; a poster whose QR does not read is never handed out
+    const raw = await qrReader(1400).read(c);
+    return raw ? raw.includes(`/s/${shop.slug}`) : false;
   }
   async function png(share = false) {
     setBusy("png");
@@ -251,12 +258,36 @@ export default function PosterBench({ shop, qr, url }: { shop: Shop; qr: string;
   }
   async function pdf() {
     setBusy("pdf");
-    const [{ PDFDocument }, c] = await Promise.all([import("pdf-lib"), render()]);
+    const [{ PDFDocument, rgb }, QR, c] = await Promise.all([import("pdf-lib"), import("qrcode"), render()]);
+    const ok = await selfTest(c);
+    if (!ok) { setBusy(null); return setCheck("QR padha nahi gaya. Photo chhoti karo ya doosra template chuno."); }
+    setCheck("QR jaanch liya: scan hota hai aur sahi dukaan kholta hai.");
     const doc = await PDFDocument.create();
     doc.setTitle(`${shop.name}: Gullak poster`);
+    doc.setAuthor(shop.name);
+    doc.setCreator("Gullak");
     const img = await doc.embedPng(await new Promise<ArrayBuffer>((r) => c.toBlob((b) => b!.arrayBuffer().then(r), "image/png")));
     const page = doc.addPage(tpl.pt);
     page.drawImage(img, { x: 0, y: 0, width: tpl.pt[0], height: tpl.pt[1] });
+    // the QR itself is vector: every dark run of modules is a filled rectangle, sharp at any print size
+    const mtx = QR.create(qrText, { errorCorrectionLevel: "M" }).modules;
+    const n = mtx.size;
+    const k = tpl.pt[0] / qrBoxes.current.W;
+    for (const bx of qrBoxes.current.boxes) {
+      const x0 = bx.x * k, top = bx.y * k, s = bx.s * k, cell = s / n;
+      page.drawRectangle({ x: x0, y: tpl.pt[1] - top - s, width: s, height: s, color: rgb(0.961, 0.914, 0.812) });
+      for (let r = 0; r < n; r++) {
+        let run = -1;
+        for (let col = 0; col <= n; col++) {
+          const dark = col < n && mtx.get(bx.rot ? n - 1 - r : r, bx.rot ? n - 1 - col : col);
+          if (dark && run < 0) run = col;
+          if (!dark && run >= 0) {
+            page.drawRectangle({ x: x0 + run * cell, y: tpl.pt[1] - top - (r + 1) * cell, width: (col - run) * cell + 0.02, height: cell + 0.02, color: rgb(0.11, 0.071, 0.063) });
+            run = -1;
+          }
+        }
+      }
+    }
     const bytes = await doc.save();
     markDone();
     const a = document.createElement("a");
