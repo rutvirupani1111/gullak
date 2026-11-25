@@ -2,11 +2,21 @@
 import { useEffect, useState } from "react";
 import type { WalletCoupon } from "@/lib/server/wallet";
 import { formatCode } from "@/lib/code";
+import { useOfflineShell } from "./Offline";
 
 /** Counter par dikhao: paper white, max contrast, wake lock on. Deliberately no decoration. */
 export default function ShowCoupon({ c, qr }: { c: WalletCoupon; qr: string }) {
   // the clock starts on the phone, not on the server, so the first paint and the live countdown agree
   const [now, setNow] = useState<number | null>(null);
+  const [offline, setOffline] = useState(false);
+  useOfflineShell();
+  useEffect(() => {
+    setOffline(!navigator.onLine);
+    const off = () => setOffline(true), on = () => setOffline(false);
+    addEventListener("offline", off);
+    addEventListener("online", on);
+    return () => { removeEventListener("offline", off); removeEventListener("online", on); };
+  }, []);
   useEffect(() => {
     let lock: { release: () => Promise<void> } | null = null;
     (navigator as unknown as { wakeLock?: { request: (t: string) => Promise<{ release: () => Promise<void> }> } }).wakeLock?.request("screen").then((l) => (lock = l)).catch(() => {});
@@ -27,6 +37,7 @@ export default function ShowCoupon({ c, qr }: { c: WalletCoupon; qr: string }) {
       <div dangerouslySetInnerHTML={{ __html: c.mohar }} style={{ width: 96, height: 96 }} />
       <p style={{ margin: 0, fontWeight: 700 }}>{c.status === "issued" ? `Bacha samay ${clock}` : c.status === "redeemed" ? "Yeh coupon diya ja chuka hai" : "Khatam"}</p>
       {c.minBill > 0 && <p style={{ margin: 0 }}>Kam se kam bill ₹{c.minBill / 100}</p>}
+      {offline && <p style={{ margin: 0, fontSize: 14, fontWeight: 700, border: "2px solid #000", padding: "4px 10px" }}>Offline: dikhane ke liye theek hai. Thappa network aane par lagega.</p>}
       <p style={{ fontSize: 13, maxWidth: 320 }}>Staff mohar ka design apni screen se milayenge. Show this at the counter; staff match the seal.</p>
     </main>
   );

@@ -32,6 +32,7 @@ export default async function Rules({ params }: { params: Promise<{ slug: string
               <li><b>Khelne ke liye kuch kharidna zaroori nahi.</b> No purchase is necessary to play.</li>
               <li>Ek phone, ek khel har {d.c.play_period === "day" ? "din" : d.c.play_period === "week" ? "hafte" : "campaign"} / One play per device per {d.c.play_period}. After you share your number, also one play per number.</li>
               {d.c.live_qr_required && <li>Counter ke phone ka QR scan karna zaroori hai / The live QR on the counter phone is required.</li>}
+              {d.c.geofence_m ? <li>Sirf dukaan ke {d.c.geofence_m} m ke andar khel sakte hain. Khelo dabane par phone jagah poochhta hai; jagah sirf jaanch ke liye hai, save nahi hoti. / Play works only within {d.c.geofence_m} m of the shop. Your location is checked once and never stored.</li> : null}
               <li>Nateeja server tay karta hai aur dukaan ki chaabi se seal karta hai. The server draws every result and signs it with the shop key.</li>
               <li>Rozana inaam budget / Daily give-away budget: {rupees(d.c.daily_budget_paise)}</li>
             </ul>

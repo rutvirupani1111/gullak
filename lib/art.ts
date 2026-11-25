@@ -97,12 +97,18 @@ export function labelSvg(opts: { palette: string; initial: string; seed: string;
   const kind = opts.pattern ?? hashSeed(opts.seed) % 8;
   const ink = textOn(b);
   const title = (opts.title ?? "").replace(/[<&>]/g, "");
+  const words = title || opts.initial;
+  // the panel grows with the words and the lettering shrinks to fit, so a long festival name never runs off the label
+  const len = [...words].length;
+  const fs = Math.max(10, Math.min(22, Math.floor((w - 36) / Math.max(1, len * 0.58))));
+  const pw = Math.min(w - 24, Math.max(100, Math.ceil(len * fs * 0.58) + 22));
+  const ph = Math.max(28, Math.min(40, fs + 18));
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}" width="100%" height="100%" aria-hidden="true">
 ${patternSvg(kind, w, h, a, b)}
 <rect x="6" y="6" width="${w - 12}" height="${h - 12}" fill="none" stroke="#1C1210" stroke-width="2.5"/>
-<rect x="${w / 2 - 50}" y="${h / 2 - 20}" width="100" height="40" fill="${b}" stroke="#1C1210" stroke-width="2.5"/>
-<text x="${w / 2 + 1.5}" y="${h / 2 + 8}" text-anchor="middle" font-family="var(--f-display)" font-size="22" fill="#1C1210" opacity=".35">${title || opts.initial}</text>
-<text x="${w / 2}" y="${h / 2 + 7}" text-anchor="middle" font-family="var(--f-display)" font-size="22" fill="${ink}">${title || opts.initial}</text>
+<rect x="${(w - pw) / 2}" y="${h / 2 - ph / 2}" width="${pw}" height="${ph}" fill="${b}" stroke="#1C1210" stroke-width="2.5"/>
+<text x="${w / 2 + 1.5}" y="${h / 2 + fs * 0.36 + 1}" text-anchor="middle" font-family="var(--f-display)" font-size="${fs}" fill="#1C1210" opacity=".35">${words}</text>
+<text x="${w / 2}" y="${h / 2 + fs * 0.36}" text-anchor="middle" font-family="var(--f-display)" font-size="${fs}" fill="${ink}">${words}</text>
 </svg>`;
 }
 

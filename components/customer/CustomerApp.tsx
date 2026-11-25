@@ -2,7 +2,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Bulbs, GullakArt, Keeper, Label, type KeeperT } from "@/components/art";
 import { sha256, utf8, leadingZeroBits, b64ToBytes } from "@/lib/sha256";
-import { pal, textOn } from "@/lib/art";
+import { pal, textOn, moharSvg } from "@/lib/art";
+import { idbPut, idbReplace } from "@/lib/idb";
+import { useOfflineShell } from "./Offline";
 import { minuteLabel } from "@/lib/time";
 import { Chakri, Patti, Toss, type PlayResult } from "./Games";
 
@@ -10,7 +12,7 @@ type Shop = { slug: string; name: string; name_local: string | null; address: st
 type Prize = { id: string; label_hi: string; label_en: string; kind: string; tier: number; remaining: number | null; total: number | null; pct: number };
 type Ready = {
   eligible: boolean; reason?: string; nextPlayAt?: string; visitN: number; bonus?: string;
-  campaign: { id: string; game: "chakri" | "patti" | "toss"; title_hi: string; title_en: string; period: string; open_minute: number; close_minute: number; live_qr_required: boolean } | null;
+  campaign: { id: string; game: "chakri" | "patti" | "toss"; title_hi: string; title_en: string; period: string; open_minute: number; close_minute: number; live_qr_required: boolean; geofence_m?: number | null } | null;
   prizes: Prize[]; layout: { prizeId: string; pct: number }[]; challenge: { nonce: string; bits: number; exp: number } | null; tossSeed: number;
 };
 type Lang = "hi" | "hinglish" | "en";
@@ -44,6 +46,9 @@ const T = {
   show: { hi: "काउंटर पर दिखाओ", hinglish: "Counter par dikhao", en: "Show at the counter" },
   step1: { hi: "बिल देते समय यह कूपन काउंटर पर दिखाओ।", hinglish: "Bill dete waqt yeh coupon counter par dikhao.", en: "Show this coupon at the counter when you pay." },
   step2: { hi: "स्टाफ ठप्पा लगाएगा, इनाम आपका।", hinglish: "Staff thappa lagayega, inaam aapka.", en: "Staff stamp it, and the prize is yours." },
+  geoAsk: { hi: "यह खेल सिर्फ़ दुकान पर चलता है। खेलो दबाने पर फ़ोन जगह पूछेगा, वह कहीं सेव नहीं होती।", hinglish: "Yeh khel sirf dukaan par chalta hai. Khelo dabane par phone jagah poochhega. Jagah kahin save nahi hoti.", en: "This game only works at the shop. Your phone will ask for your location when you press Play. It is never stored." },
+  geoNo: { hi: "जगह नहीं मिली। फ़ोन में location चालू करके दुकान पर दोबारा खेलो दबाओ।", hinglish: "Jagah nahi mili. Phone mein location on karke dukaan par dobara Khelo dabao.", en: "Could not get your location. Turn location on and press Play again at the shop." },
+  geoWait: { hi: "जगह देख रहे हैं...", hinglish: "Jagah dekh rahe hain...", en: "Checking where you are..." },
   howto: { hi: "1. डिब्बा खोलो  2. खेलो  3. जीता कूपन काउंटर पर दिखाओ", hinglish: "1. Dibba kholo  2. Khelo  3. Jeeta coupon counter par dikhao", en: "1. Open the box  2. Play  3. Show the coupon you win at the counter" },
 };
 
@@ -84,10 +89,15 @@ export default function CustomerApp({ shop, query }: { shop: Shop; query: { lqt?
   const [calm, setCalm] = useState(false);
   const [dusk, setDusk] = useState(false);
   const [repeat, setRepeat] = useState(false);
+  // lite mode: a slow phone keeps every result and every word, and drops the particles and half the bulbs
+  const [lite, setLite] = useState(false);
   const opened = useRef(!!query.khula);
   const btn = useRef<HTMLButtonElement>(null);
   const gullakRef = useRef<HTMLButtonElement>(null);
   const powSig = useRef({ stop: false });
+  const geoRef = useRef<{ lat: number; lng: number; acc: number } | undefined>(undefined);
+  const [geoBusy, setGeoBusy] = useState(false);
+  useOfflineShell();
   const p = pal(shop.palette);
   const t = (k: keyof typeof T) => T[k][lang];
   const glang = lang === "en" ? "en" : "hi";
@@ -98,6 +108,7 @@ export default function CustomerApp({ shop, query }: { shop: Shop; query: { lqt?
       const l = localStorage.getItem("gk.lang");
       if (l === "en" || l === "hi" || l === "hinglish") setLang(l);
       setRepeat(!!localStorage.getItem("gk.seen." + shop.slug));
+      if (localStorage.getItem("gk.lite") === "1") setLite(true);
       setCount(JSON.parse(localStorage.getItem("gk.coupons") || "[]").filter((c: { status: string }) => c.status === "issued").length);
     } catch {}
     setCalm(matchMedia("(prefers-reduced-motion: reduce)").matches);
@@ -108,7 +119,7 @@ export default function CustomerApp({ shop, query }: { shop: Shop; query: { lqt?
     } catch {}
     fetch("/api/v1/wallet").then((r) => r.json()).then((w) => {
       setCount(w.coupons.filter((c: { status: string }) => c.status === "issued").length);
-      try { localStorage.setItem("gk.coupons", JSON.stringify(w.coupons)); } catch {}
+      idbReplace(w.coupons);
     }).catch(() => {});
   }, [shop.slug, query.lqt, query.cb, query.src]);
 
@@ -193,9 +204,31 @@ export default function CustomerApp({ shop, query }: { shop: Shop; query: { lqt?
     return () => removeEventListener("gk-replay-box", replay);
   }, []);
 
+  // frame-time monitor: the median of 30 frames during the arrival; above 20 ms (under 50 fps) this phone gets lite mode
+  useEffect(() => {
+    if (box !== "opening" || lite || calm) return;
+    const times: number[] = [];
+    let last = performance.now();
+    let raf = 0;
+    const tick = (now: number) => {
+      times.push(now - last);
+      last = now;
+      if (times.length < 31) raf = requestAnimationFrame(tick);
+      else {
+        const med = times.slice(1).sort((a, b) => a - b)[15];
+        if (med > 20) {
+          setLite(true);
+          try { localStorage.setItem("gk.lite", "1"); } catch {}
+        }
+      }
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [box, lite, calm]);
+
   const canvasRef = useRef<HTMLCanvasElement>(null);
   function sparks() {
-    if (calm) return;
+    if (calm || lite) return;
     const c = canvasRef.current;
     if (!c) return;
     const g = c.getContext("2d")!;
@@ -222,7 +255,7 @@ export default function CustomerApp({ shop, query }: { shop: Shop; query: { lqt?
         key = crypto.randomUUID();
         sessionStorage.setItem("gk.idem." + ready.campaign!.id, key);
       }
-      const bodyStr = JSON.stringify({ idempotencyKey: key, nonce: ready.challenge.nonce, pow, lqt: query.lqt, comebackToken: query.cb, giftToken: ready.bonus === "gift" ? giftTok() : undefined, ...extra });
+      const bodyStr = JSON.stringify({ idempotencyKey: key, nonce: ready.challenge.nonce, pow, lqt: query.lqt, comebackToken: query.cb, giftToken: ready.bonus === "gift" ? giftTok() : undefined, geo: geoRef.current, ...extra });
       for (let attempt = 0; attempt < 4; attempt++) {
         try {
           const r = await fetch(`/api/v1/s/${shop.slug}/play`, { method: "POST", headers: { "content-type": "application/json" }, body: bodyStr });
@@ -239,6 +272,15 @@ export default function CustomerApp({ shop, query }: { shop: Shop; query: { lqt?
               return null;
             }
             setVerified(ok);
+          }
+          // the signed result goes into the phone's own gullak before any animation lands, so a lost network after this point loses nothing
+          if (d.couponId && d.payload && d.prize) {
+            await idbPut({
+              id: d.couponId, code: d.payload.k, status: "issued", issuedAt: d.payload.i, expiresAt: d.payload.e,
+              label_hi: d.prize.label_hi, label_en: d.prize.label_en, kind: d.prize.kind, minBill: d.prize.minBill ?? 0,
+              shop: { slug: shop.slug, name: shop.name, palette: shop.palette, initial: shop.initial, address: shop.address },
+              mohar: moharSvg(d.sig, shop.palette, shop.initial), redeemedAt: null,
+            });
           }
           sessionStorage.removeItem("gk.idem." + ready.campaign!.id);
           if (ready.bonus === "gift") try { localStorage.removeItem("gk.gift." + shop.slug); } catch {}
@@ -258,7 +300,7 @@ export default function CustomerApp({ shop, query }: { shop: Shop; query: { lqt?
     (res: PlayResult, fromEl: HTMLElement | null) => {
       setPhase("done");
       if (!res.couponId) return;
-      fetch("/api/v1/wallet").then((r) => r.json()).then((w) => { try { localStorage.setItem("gk.coupons", JSON.stringify(w.coupons)); } catch {} }).catch(() => {});
+      fetch("/api/v1/wallet").then((r) => r.json()).then((w) => idbReplace(w.coupons)).catch(() => {});
       const target = gullakRef.current;
       if (!fromEl || !target || calm) {
         setCount((c) => c + 1);
@@ -332,7 +374,7 @@ export default function CustomerApp({ shop, query }: { shop: Shop; query: { lqt?
       {/* C2: inside the tray. The counter, the chalkboard and the dukaandaar. */}
       <section className="wrap" style={{ paddingBottom: 120 }}>
         <div style={{ position: "relative", maxWidth: 520, margin: "0 auto" }}>
-          <Bulbs lit={box !== "closed" && !!ready && ready.reason !== "closed_hours"} />
+          <Bulbs n={lite ? 6 : 12} lit={box !== "closed" && !!ready && ready.reason !== "closed_hours"} stagger={lite ? 120 : 60} />
           <h1 className="f-display truck" style={{ fontSize: "clamp(30px, 9vw, 46px)", lineHeight: 1, margin: "6px 0 2px", color: p.a, ["--sh" as string]: p.b, textAlign: "center" }}>
             {lang === "hi" && shop.name_local ? shop.name_local : shop.name}
           </h1>
@@ -369,15 +411,28 @@ export default function CustomerApp({ shop, query }: { shop: Shop; query: { lqt?
             {ready?.eligible && c && phase === "counter" && (
               <div style={{ textAlign: "center" }} className="rise">
                 {ready.bonus && <p className="f-chalk" style={{ fontSize: 22, color: dusk ? "#FFE6A0" : undefined }}>{ready.bonus === "comeback" ? t("bonusCb") : t("bonusGift")}</p>}
-                <button className="plate red" style={{ fontSize: 24, minWidth: 220, minHeight: 64 }} disabled={!pow} onClick={() => setPhase("game")}>
-                  <span className="f-display">{pow ? t("play") : t("getting")}</span>
+                {c.geofence_m ? <p style={{ fontSize: 14, maxWidth: 340, margin: "0 auto 12px", color: dusk ? "#E2CDA2" : undefined }}>{t("geoAsk")}</p> : null}
+                <button className="plate red" style={{ fontSize: 24, minWidth: 220, minHeight: 64 }} disabled={!pow || geoBusy}
+                  onClick={() => {
+                    if (!c.geofence_m) return setPhase("game");
+                    // asked only here, only for a geofenced campaign; the server checks it and drops it
+                    setErr(null);
+                    if (!("geolocation" in navigator)) return setErr(t("geoNo"));
+                    setGeoBusy(true);
+                    navigator.geolocation.getCurrentPosition(
+                      (pos) => { geoRef.current = { lat: pos.coords.latitude, lng: pos.coords.longitude, acc: Math.round(pos.coords.accuracy || 0) }; setGeoBusy(false); setPhase("game"); },
+                      () => { setGeoBusy(false); setErr(t("geoNo")); },
+                      { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 },
+                    );
+                  }}>
+                  <span className="f-display">{geoBusy ? t("geoWait") : pow ? t("play") : t("getting")}</span>
                 </button>
                 <p style={{ fontSize: 13, marginTop: 10, color: dusk ? "#E2CDA2" : undefined }}>{t("sealed")}</p>
               </div>
             )}
             {ready?.eligible && c && phase !== "counter" && (
               <div className="rise">
-                {c.game === "chakri" && <Chakri prizes={ready.prizes} layout={ready.layout} play={play} onLanded={landed} lang={glang} calm={calm} palette={shop.palette} initial={shop.initial} />}
+                {c.game === "chakri" && <Chakri prizes={ready.prizes} layout={ready.layout} play={play} onLanded={landed} lang={glang} calm={calm} lite={lite} palette={shop.palette} initial={shop.initial} />}
                 {c.game === "patti" && <Patti play={play} onLanded={landed} lang={glang} palette={shop.palette} initial={shop.initial} />}
                 {c.game === "toss" && <Toss play={play} onLanded={landed} lang={glang} seed={ready.tossSeed} calm={calm} />}
               </div>
@@ -421,8 +476,8 @@ export default function CustomerApp({ shop, query }: { shop: Shop; query: { lqt?
 
       {/* docked gullak, on every customer screen */}
       <button ref={gullakRef} aria-label={`${t("wallet")} (${count})`} onClick={() => (location.href = "/w")}
-        style={{ position: "fixed", right: 14, bottom: 14, width: 64, height: 64, background: "none", border: 0, padding: 0, zIndex: 50, viewTransitionName: "gullak" } as React.CSSProperties}>
-        <GullakArt size={64} />
+        style={{ position: "fixed", right: 12, bottom: "max(12px, env(safe-area-inset-bottom))", width: 56, height: 56, background: "none", border: 0, padding: 0, zIndex: 50, viewTransitionName: "gullak" } as React.CSSProperties}>
+        <GullakArt size={56} />
         <span className="f-mono" style={{ position: "absolute", top: -4, right: -4, minWidth: 24, height: 24, borderRadius: 12, background: "var(--press-red)", color: "#fff", border: "2px solid var(--ink)", fontWeight: 700, fontSize: 13, display: "grid", placeItems: "center" }}>{count}</span>
       </button>
 

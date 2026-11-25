@@ -8,7 +8,7 @@ import { rupees } from "@/lib/art";
 import { minuteLabel } from "@/lib/time";
 
 type Prize = { id: string; label_hi: string; label_en: string; kind: string; cost_paise: number; weight: number; tier: number; total_stock: number | null; remaining: number | null; daily_cap: number | null; active: boolean; version: number };
-type Camp = { id: string; name: string; title_hi: string | null; title_en: string | null; status: string; game: string; starts_at: string; ends_at: string; open_minute: number; close_minute: number; play_period: string; daily_budget_paise: number; live_qr_required: boolean; strict_skill: boolean; version: number };
+type Camp = { id: string; name: string; title_hi: string | null; title_en: string | null; status: string; game: string; starts_at: string; ends_at: string; open_minute: number; close_minute: number; play_period: string; daily_budget_paise: number; live_qr_required: boolean; strict_skill: boolean; geofence_m: number | null; version: number };
 type D = { c: Camp; prizes: Prize[]; perDay: number };
 
 const COLS = ["#F4B400", "#D7261E", "#13804F", "#E2207B", "#0E8A86", "#FF7A1A", "#B9502B", "#F5E9CF"];
@@ -302,6 +302,7 @@ export default function Almirah({ slug, d }: { slug: string; d: D }) {
             <input type="checkbox" checked={c.strict_skill} onChange={(e) => saveCamp({ strict_skill: e.target.checked })} style={{ width: 24, height: 24 }} />
             Sirf hunar ka khel (gullak toss)
           </label>
+          <GeofenceToggle on={!!c.geofence_m} onSet={(v) => saveCamp(v as Partial<Camp>)} />
         </div>
         <p style={{ fontSize: 14 }}><a className="tap" href={`/s/${slug}/niyam`}>Niyam ka panna dekho</a>: yeh odds aur stock apne aap wahan chhapte hain.</p>
       </section>
@@ -313,6 +314,34 @@ export default function Almirah({ slug, d }: { slug: string; d: D }) {
         </div>
       )}
     </main>
+  );
+}
+
+/** Optional geofence, off by default: the owner stands in the shop and taps once; that spot becomes the centre of a 150 m circle.
+ *  Customers are asked for their location only on this campaign, only when they press Khelo, and it is never stored. */
+function GeofenceToggle({ on, onSet }: { on: boolean; onSet: (v: { geofence_m: number | null; here?: { lat: number; lng: number } }) => void }) {
+  const [busy, setBusy] = useState(false);
+  const [note, setNote] = useState<string | null>(null);
+  return (
+    <div style={{ display: "grid", gap: 4 }}>
+      <label style={{ display: "flex", gap: 10, alignItems: "center", fontWeight: 600, minHeight: 44 }}>
+        <input type="checkbox" checked={on} disabled={busy} style={{ width: 24, height: 24 }}
+          onChange={(e) => {
+            setNote(null);
+            if (!e.target.checked) return onSet({ geofence_m: null });
+            if (!("geolocation" in navigator)) return setNote("Is phone mein location nahi hai.");
+            setBusy(true);
+            navigator.geolocation.getCurrentPosition(
+              (pos) => { setBusy(false); onSet({ geofence_m: 150, here: { lat: pos.coords.latitude, lng: pos.coords.longitude } }); setNote("Dukaan ki jagah save hui. 150 m ke andar hi khel chalega."); },
+              () => { setBusy(false); setNote("Location nahi mili. Phone mein location on karke dobara dabao."); },
+              { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 },
+            );
+          }} />
+        {busy ? "Jagah dhoondh rahe hain..." : "Sirf dukaan ke 150 m andar"}
+      </label>
+      <span style={{ fontSize: 13, opacity: 0.8 }}>Dukaan mein khade hokar on karo. Grahak se location sirf Khelo dabane par maangi jaati hai, aur kahin save nahi hoti.</span>
+      {note && <span role="status" style={{ fontSize: 13, fontWeight: 700 }}>{note}</span>}
+    </div>
   );
 }
 

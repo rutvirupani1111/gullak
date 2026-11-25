@@ -23,7 +23,7 @@ function arc(cx: number, cy: number, r: number, a0: number, a1: number) {
 }
 
 /** Chakri: segment angle = 360 x probability, no visual minimum. Idle spin while /play is in flight. */
-export function Chakri({ prizes, layout: initial, play, onLanded, lang, calm, palette }: { prizes: Prize[]; layout: { prizeId: string; pct: number }[]; play: PlayFn; onLanded: (r: PlayResult, el: HTMLElement | null) => void; lang: Lang; calm: boolean; palette: string; initial: string }) {
+export function Chakri({ prizes, layout: initial, play, onLanded, lang, calm, lite = false, palette }: { prizes: Prize[]; layout: { prizeId: string; pct: number }[]; play: PlayFn; onLanded: (r: PlayResult, el: HTMLElement | null) => void; lang: Lang; calm: boolean; lite?: boolean; palette: string; initial: string }) {
   const [layout, setLayout] = useState(initial);
   const [busy, setBusy] = useState(false);
   const [win, setWin] = useState<string | null>(null);
@@ -69,7 +69,7 @@ export function Chakri({ prizes, layout: initial, play, onLanded, lang, calm, pa
       }
       if (wheel.current) wheel.current.style.transform = `rotate(${angle.current}deg)`;
       // peg ticks are visual only here (no audio on this build); sparks scale with speed
-      if (ctx && !calm) {
+      if (ctx && !calm && !lite) {
         if (now - tickAt > 40 && vel > 60) tickAt = now;
         const n = Math.min(3, Math.floor(vel / 200));
         for (let i = 0; i < n && parts.length < 40; i++) {

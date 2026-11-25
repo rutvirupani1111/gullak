@@ -7,7 +7,7 @@ export default async function Page({ params }: { params: Promise<{ shop: string;
   const p = await params;
   const s = await ownerShop(p.shop);
   const d = await withShop(s.id, async (q) => {
-    const c = await q.one("select id, name, title_hi, title_en, status, game, starts_at, ends_at, open_minute, close_minute, play_period, daily_budget_paise, live_qr_required, strict_skill, version from campaigns where id = $1", [p.campaign]);
+    const c = await q.one("select id, name, title_hi, title_en, status, game, starts_at, ends_at, open_minute, close_minute, play_period, daily_budget_paise, live_qr_required, strict_skill, geofence_m, version from campaigns where id = $1", [p.campaign]);
     if (!c) return null;
     const prizes = await q.query("select id, label_hi, label_en, kind, cost_paise, weight, tier, total_stock, remaining, daily_cap, active, version from prizes where campaign_id = $1 and active order by sort, id", [c.id]);
     // median plays a day over 14 days; one day of this campaign is not a crowd, so it needs 3 days before it wins over the shop's own history

@@ -4,6 +4,8 @@ import { GullakArt, Label } from "@/components/art";
 import type { WalletCoupon } from "@/lib/server/wallet";
 import { formatCode } from "@/lib/code";
 import { CONSENT_VERSION, consentText } from "@/lib/consent";
+import { idbCoupons, idbReplace, warmCouponPages } from "@/lib/idb";
+import { useOfflineShell } from "./Offline";
 
 function left(iso: string, now: number) {
   const ms = new Date(iso).getTime() - now;
@@ -21,17 +23,31 @@ export default function Wallet({ initial }: { initial: WalletCoupon[] }) {
   const [sheet, setSheet] = useState<string | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
   const [forgetAsk, setForgetAsk] = useState(false);
+  useOfflineShell();
+  useEffect(() => {
+    // online, the server's list is the truth and the phone keeps a copy; offline, the phone's own copy is shown
+    let gone = false;
+    if (navigator.onLine) {
+      idbReplace(initial).then(() => warmCouponPages(initial));
+    } else {
+      idbCoupons().then((local) => {
+        if (gone) return;
+        setOffline(true);
+        if (local.length) setCoupons(local);
+        if (local.some((c) => c.status === "issued" && new Date(c.expiresAt).getTime() > Date.now())) setSpilled(true);
+      });
+    }
+    const goOff = () => setOffline(true);
+    const goOn = () => setOffline(false);
+    addEventListener("offline", goOff);
+    addEventListener("online", goOn);
+    return () => { gone = true; removeEventListener("offline", goOff); removeEventListener("online", goOn); };
+  }, [initial]);
   useEffect(() => {
     // the gullak spills on its own the first time, so a new visitor sees what is inside without guessing
     const anyLive = initial.some((c) => c.status === "issued" && new Date(c.expiresAt).getTime() > Date.now());
     const sp = anyLive ? setTimeout(() => setSpilled(true), 650) : null;
     const i = setInterval(() => setNow(Date.now()), 30000);
-    if (!initial.length) {
-      try {
-        const cached = JSON.parse(localStorage.getItem("gk.coupons") || "[]");
-        if (cached.length && !navigator.onLine) { setCoupons(cached); setOffline(true); }
-      } catch {}
-    } else try { localStorage.setItem("gk.coupons", JSON.stringify(initial)); } catch {}
     // shake to spill: two jolts above 18 m/s2 within 600 ms
     let lastJolt = 0;
     const onMotion = (e: DeviceMotionEvent) => {

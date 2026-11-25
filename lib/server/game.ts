@@ -136,7 +136,22 @@ function eligibilityWindow(c: Row): string | null {
   return null;
 }
 
-async function bonusBucket(q: Q, c: Row, deviceId: string, giftToken?: string, comebackToken?: string, lqt?: string) {
+// ---------- optional geofence: the browser location is checked against the shop and never stored ----------
+export type Geo = { lat: number; lng: number; acc?: number };
+function metresBetween(a: { lat: number; lng: number }, b: { lat: number; lng: number }) {
+  const R = 6371000, rad = Math.PI / 180;
+  const dLat = (b.lat - a.lat) * rad, dLng = (b.lng - a.lng) * rad;
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(a.lat * rad) * Math.cos(b.lat * rad) * Math.sin(dLng / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(h));
+}
+/** null: this campaign has no geofence. true or false: the phone is inside or outside it. A phone's own accuracy, up to 60 m, is forgiven. */
+function geoCheck(c: Row, shop: Row, geo?: Geo): boolean | null {
+  if (!c.geofence_m || shop.lat == null || shop.lng == null) return null;
+  if (!geo) return false;
+  return metresBetween({ lat: Number(shop.lat), lng: Number(shop.lng) }, geo) <= c.geofence_m + Math.min(60, Math.max(0, geo.acc ?? 0));
+}
+
+async function bonusBucket(q: Q, c: Row, deviceId: string, giftToken?: string, comebackToken?: string, lqt?: string, geoOk: boolean | null = null) {
   if (comebackToken) {
     const cb = await q.one(
       "select ct.* from comeback_tokens ct where ct.token_hash = $1 and ct.shop_id = $2 and ct.used_play_id is null and ct.expires_at > now()",
@@ -151,7 +166,8 @@ async function bonusBucket(q: Q, c: Row, deviceId: string, giftToken?: string, c
     );
     if (g) {
       const today = localDay();
-      const gate = c.live_qr_required ? liveTokenValid(c.live_secret, lqt) : c.geofence_m ? false : localDay(new Date(g.created_at)) < today || liveTokenValid(c.live_secret, lqt);
+      // a slip turns into a play only at the shop: a valid Live QR, or inside the geofence, or else a later day's poster scan
+      const gate = c.live_qr_required ? liveTokenValid(c.live_secret, lqt) : geoOk !== null ? geoOk : localDay(new Date(g.created_at)) < today || liveTokenValid(c.live_secret, lqt);
       if (gate) return { bucket: "gift:" + g.id, gift: g };
     }
   }
@@ -176,11 +192,13 @@ export async function ready(slug: string, deviceId: string, ip: string, input: {
       id: p.id, label_hi: p.label_hi, label_en: p.label_en, kind: p.kind, tier: p.tier,
       remaining: p.remaining, total: p.total_stock, pct: layout.find((l) => l.prizeId === p.id)?.pct ?? 0,
     }));
-    const campaign = { id: c.id, game: c.strict_skill ? "toss" : c.game, title_hi: c.title_hi, title_en: c.title_en, period: c.play_period, open_minute: c.open_minute, close_minute: c.close_minute, live_qr_required: c.live_qr_required };
+    const campaign = { id: c.id, game: c.strict_skill ? "toss" : c.game, title_hi: c.title_hi, title_en: c.title_en, period: c.play_period, open_minute: c.open_minute, close_minute: c.close_minute, live_qr_required: c.live_qr_required, geofence_m: shop.lat != null && shop.lng != null ? ((c.geofence_m as number | null) ?? null) : null };
     const base = { visitN, campaign, prizes: pub, layout };
     let reason = eligibilityWindow(c);
     if (r < 0) reason = reason ?? "rate_limited";
-    const bonus = await bonusBucket(q, c, deviceId, input.giftToken, input.comebackToken, input.lqt);
+    // the location is asked for only when the customer presses Khelo, so /ready treats the geofence as passed for now
+    const fenced = geoCheck(c, shop, undefined) !== null;
+    const bonus = await bonusBucket(q, c, deviceId, input.giftToken, input.comebackToken, input.lqt, fenced ? true : null);
     if (!reason && c.live_qr_required && !liveTokenValid(c.live_secret, input.lqt) && !bonus?.cb) reason = "live_qr_required";
     let nextAt: string | undefined;
     if (!reason && !bonus) {
@@ -209,7 +227,7 @@ export async function ready(slug: string, deviceId: string, ip: string, input: {
 }
 
 // ---------- /play ----------
-export type PlayInput = { idempotencyKey: string; nonce: string; pow: string; lqt?: string; giftToken?: string; comebackToken?: string; toss?: { throws: Throw[] } };
+export type PlayInput = { idempotencyKey: string; nonce: string; pow: string; lqt?: string; giftToken?: string; comebackToken?: string; toss?: { throws: Throw[] }; geo?: Geo };
 
 function newCode() {
   let s = "";
@@ -237,7 +255,12 @@ export async function play(slug: string, deviceId: string, ip: string, input: Pl
     const win = eligibilityWindow(c);
     if (win) throw new HttpError(409, win, "Abhi dukaan band hai.", "The shop is closed right now.");
 
-    const bonus = await bonusBucket(q, c, deviceId, input.giftToken, input.comebackToken, input.lqt);
+    const geoOk = geoCheck(c, shop, input.geo);
+    const bonus = await bonusBucket(q, c, deviceId, input.giftToken, input.comebackToken, input.lqt, geoOk);
+    if (geoOk === false && !bonus?.cb) {
+      await logAbuse(shop.id, c.id, "geofence", deviceId, ip, { hadLocation: !!input.geo });
+      throw new HttpError(403, "geofence", "Yeh khel sirf dukaan par chalta hai. Dukaan ke paas aakar khelo.", "This game only works at the shop. Come closer and play.");
+    }
     if (c.live_qr_required && !liveTokenValid(c.live_secret, input.lqt) && !bonus?.cb) {
       await logAbuse(shop.id, c.id, "live_qr_missing", deviceId, ip);
       throw new HttpError(403, "live_qr_required", "Counter wale phone ka QR scan karo.", "Scan the QR on the counter phone.");
